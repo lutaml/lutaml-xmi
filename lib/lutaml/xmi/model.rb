@@ -1,5 +1,0 @@
-require "lutaml/xmi/model/association"
-require "lutaml/xmi/model/class"
-require "lutaml/xmi/model/document"
-require "lutaml/xmi/model/package"
-require "lutaml/xmi/model/top_element"
