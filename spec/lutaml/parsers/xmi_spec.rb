@@ -77,6 +77,11 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
         klass = parse.classes.find { |entity| entity.name == 'RequirementType' }
         expect(klass.attributes.map(&:name)).to(eq(expected_attributes_names))
       end
+
+      it "correctly parses associations for class" do
+        klass = parse.classes.find { |entity| entity.name == 'BibliographicItem' }
+        expect(klass.associations.map(&:member_end)).to(eq(['RequirementType']))
+      end
     end
   end
 end

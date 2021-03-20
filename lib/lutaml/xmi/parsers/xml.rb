@@ -11,6 +11,8 @@ module Lutaml
           "uml:LiteralInteger" => "1",
           "uml:LiteralUnlimitedNatural" => "*"
         }
+        attr_reader :main_model
+
         # @param [String] io - file object with path to .xmi file
         #        [Hash] options - options for parsing
         #
@@ -20,6 +22,7 @@ module Lutaml
         end
 
         def parse(xmi_doc)
+          @main_model = xmi_doc
           ::Lutaml::Uml::Document
             .new(serialize_to_hash(xmi_doc))
         end
@@ -31,8 +34,7 @@ module Lutaml
           {
             name: main_model["name"],
             classes: serialize_model_classes(main_model),
-            enums: serialize_model_enums(main_model),
-            # TODO: finish
+            enums: serialize_model_enums(main_model)
             # associations: serialize_model_associations(main_model)
           }
         end
@@ -43,7 +45,8 @@ module Lutaml
               xmi_id: klass['xmi:id'],
               xmi_uuid: klass['xmi:uuid'],
               name: klass['name'],
-              attributes: serialize_class_attributes(klass)
+              attributes: serialize_class_attributes(klass),
+              associations: serialize_model_associations(klass)
             }
           end
         end
@@ -68,16 +71,24 @@ module Lutaml
           end
         end
 
-        # TODO: finish
-        def serialize_model_associations(main_model)
-          model.xpath('.//packagedElement[@xmi:type="uml:Association"]').map do |enum|
-            {
-              xmi_id: enum['xmi:id'],
-              xmi_uuid: enum['xmi:uuid'],
-              name: enum['name'],
-              attributes: attributes
-            }
-          end
+        def serialize_model_associations(klass)
+          return unless klass.attributes['name']
+
+          klass.xpath('.//ownedAttribute/type').map do |assoc|
+            if assoc.attributes && assoc.attributes['idref']
+              id_ref = assoc.attributes['idref'].value
+              linked_class = main_model.xpath(%Q(//packagedElement[@xmi:type="uml:Class" and @xmi:id="#{id_ref}"])).first
+              member_end = linked_class.attributes['name'].value if linked_class
+            end
+            if member_end
+              {
+                xmi_id: assoc['xmi:id'],
+                xmi_uuid: assoc['xmi:uuid'],
+                name: assoc['name'],
+                member_end: member_end
+              }
+            end
+          end.compact
         end
 
         def serialize_class_attributes(klass)
