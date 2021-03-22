@@ -33,14 +33,23 @@ module Lutaml
           main_model = xmi_doc.xpath('//uml:Model[@xmi:type="uml:Model"]').first
           {
             name: main_model["name"],
-            classes: serialize_model_classes(main_model),
-            enums: serialize_model_enums(main_model)
-            # associations: serialize_model_associations(main_model)
+            packages: serialize_model_packages(main_model)
           }
         end
 
+        def serialize_model_packages(main_model)
+          main_model.xpath('./packagedElement[@xmi:type="uml:Package"]').map do |package|
+            {
+              name: package["name"],
+              packages: serialize_model_packages(package),
+              classes: serialize_model_classes(package),
+              enums: serialize_model_enums(package)
+            }
+          end
+        end
+
         def serialize_model_classes(model)
-          model.xpath('.//packagedElement[@xmi:type="uml:Class"]').map do |klass|
+          model.xpath('./packagedElement[@xmi:type="uml:Class"]').map do |klass|
             {
               xmi_id: klass['xmi:id'],
               xmi_uuid: klass['xmi:uuid'],
@@ -52,7 +61,7 @@ module Lutaml
         end
 
         def serialize_model_enums(model)
-          model.xpath('.//packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
+          model.xpath('./packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
             attributes = enum
                           .xpath('.//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]')
                           .map do |attribute|
