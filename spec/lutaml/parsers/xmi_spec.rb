@@ -58,6 +58,32 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           verification
         ]
       end
+      let(:expected_attributes_types) do
+        %w[
+          EAJava_ClassificationType_0..___
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_String_
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..___
+          EAJava_boolean_0..1__
+          EAJava_boolean_0..1__
+          EAJava_String_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_String_0..1__
+          EAJava_ObligationType_1..___
+          EAJava_BibliographicItem_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_FormattedString_0..1__
+          EAJava_String_0..1__
+          EAJava_boolean_0..1__
+          EAJava_RequirementSubpart_0..___
+        ]
+      end
       let(:first_package) { parse.packages.first }
       let(:first_nested_package) { parse.packages.first.packages.first }
 
@@ -86,6 +112,7 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
       it "correctly parses entities and attributes for class" do
         klass = first_nested_package.classes.find { |entity| entity.name == 'RequirementType' }
         expect(klass.attributes.map(&:name)).to(eq(expected_attributes_names))
+        expect(klass.attributes.map(&:type)).to(eq(expected_attributes_types))
       end
 
       it "correctly parses associations for class" do
