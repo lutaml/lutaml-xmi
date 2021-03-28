@@ -58,28 +58,65 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           verification
         ]
       end
+      let(:expected_attributes_types) do
+        %w[
+          EAJava_ClassificationType_0..___
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_String_
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..___
+          EAJava_boolean_0..1__
+          EAJava_boolean_0..1__
+          EAJava_String_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_String_0..1__
+          EAJava_ObligationType_1..___
+          EAJava_BibliographicItem_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_RequirementSubpart_0..___
+          EAJava_String_0..1__
+          EAJava_FormattedString_0..1__
+          EAJava_String_0..1__
+          EAJava_boolean_0..1__
+          EAJava_RequirementSubpart_0..___
+        ]
+      end
+      let(:first_package) { parse.packages.first }
+      let(:first_nested_package) { parse.packages.first.packages.first }
 
       it "parses xml file into Lutaml::Uml::Node::Document object" do
         expect(parse).to(be_instance_of(::Lutaml::Uml::Document))
       end
 
-      it "correctly parses entities of class type" do
-        expect(parse.classes.map(&:name)).to(eq(expected_class_names))
-        expect(parse.classes.map(&:xmi_id)).to(eq(expected_class_xmi_ids))
+      it "correctly parses package tree" do
+        expect(parse.packages.map(&:name)).to(eq(['ISO 19170-1 Edition 1']))
+        expect(first_package.packages.map(&:name))
+          .to(eq(["requirement type class diagram", "Common Spatio-temporal Classes"]))
+        expect(first_package.packages.last.packages.map(&:name))
+          .to(eq(["Temporal and Zonal Geometry", "Temporal and Zonal RS using Identifiers"]))
+      end
+
+      it "correctly parses package` classes" do
+        expect(first_nested_package.classes.map(&:name)).to(eq(expected_class_names))
+        expect(first_nested_package.classes.map(&:xmi_id)).to(eq(expected_class_xmi_ids))
       end
 
       it "correctly parses entities of enums type" do
-        expect(parse.enums.map(&:name)).to(eq(expected_enum_names))
-        expect(parse.enums.map(&:xmi_id)).to(eq(expected_enum_xmi_ids))
+        expect(first_nested_package.enums.map(&:name)).to(eq(expected_enum_names))
+        expect(first_nested_package.enums.map(&:xmi_id)).to(eq(expected_enum_xmi_ids))
       end
 
       it "correctly parses entities and attributes for class" do
-        klass = parse.classes.find { |entity| entity.name == 'RequirementType' }
+        klass = first_nested_package.classes.find { |entity| entity.name == 'RequirementType' }
         expect(klass.attributes.map(&:name)).to(eq(expected_attributes_names))
+        expect(klass.attributes.map(&:type)).to(eq(expected_attributes_types))
       end
 
       it "correctly parses associations for class" do
-        klass = parse.classes.find { |entity| entity.name == 'BibliographicItem' }
+        klass = first_nested_package.classes.find { |entity| entity.name == 'BibliographicItem' }
         expect(klass.associations.map(&:member_end)).to(eq(['RequirementType']))
       end
     end

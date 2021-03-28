@@ -11,7 +11,7 @@ module Lutaml
           "uml:LiteralInteger" => "1",
           "uml:LiteralUnlimitedNatural" => "*"
         }
-        attr_reader :main_model
+        attr_reader :main_model, :xmi_cache
 
         # @param [String] io - file object with path to .xmi file
         #        [Hash] options - options for parsing
@@ -22,6 +22,7 @@ module Lutaml
         end
 
         def parse(xmi_doc)
+          @xmi_cache = {}
           @main_model = xmi_doc
           ::Lutaml::Uml::Document
             .new(serialize_to_hash(xmi_doc))
@@ -33,26 +34,36 @@ module Lutaml
           main_model = xmi_doc.xpath('//uml:Model[@xmi:type="uml:Model"]').first
           {
             name: main_model["name"],
-            classes: serialize_model_classes(main_model),
-            enums: serialize_model_enums(main_model)
-            # associations: serialize_model_associations(main_model)
+            packages: serialize_model_packages(main_model)
           }
         end
 
+        def serialize_model_packages(main_model)
+          main_model.xpath('./packagedElement[@xmi:type="uml:Package"]').map do |package|
+            {
+              name: package["name"],
+              packages: serialize_model_packages(package),
+              classes: serialize_model_classes(package),
+              enums: serialize_model_enums(package)
+            }
+          end
+        end
+
         def serialize_model_classes(model)
-          model.xpath('.//packagedElement[@xmi:type="uml:Class"]').map do |klass|
+          model.xpath('./packagedElement[@xmi:type="uml:Class"]').map do |klass|
             {
               xmi_id: klass['xmi:id'],
               xmi_uuid: klass['xmi:uuid'],
               name: klass['name'],
               attributes: serialize_class_attributes(klass),
-              associations: serialize_model_associations(klass)
+              associations: serialize_model_associations(klass),
+              definition: lookup_model_definition(klass)
             }
           end
         end
 
         def serialize_model_enums(model)
-          model.xpath('.//packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
+          model.xpath('./packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
             attributes = enum
                           .xpath('.//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]')
                           .map do |attribute|
@@ -77,8 +88,7 @@ module Lutaml
           klass.xpath('.//ownedAttribute/type').map do |assoc|
             if assoc.attributes && assoc.attributes['idref']
               id_ref = assoc.attributes['idref'].value
-              linked_class = main_model.xpath(%Q(//packagedElement[@xmi:type="uml:Class" and @xmi:id="#{id_ref}"])).first
-              member_end = linked_class.attributes['name'].value if linked_class
+              member_end = lookup_entity_name(id_ref)
             end
             if member_end
               {
@@ -100,10 +110,30 @@ module Lutaml
               # TODO: xmi_id
               # xmi_id: klass['xmi:id'],
               name: attribute['name'],
-              type: type['xmi:idref'],
+              type: lookup_entity_name(type['xmi:idref']) || type['xmi:idref'],
               cardinality: [ATTRIBUTE_MAPPINGS[lowerValue["xmi:type"]], ATTRIBUTE_MAPPINGS[upperValue["xmi:type"]]].compact
             }
           end
+        end
+
+        def lookup_model_definition(klass)
+          xmi_id = klass['xmi:id']
+          node = main_model.xpath(%Q(//element[@xmi:idref="#{xmi_id}"]/properties)).first
+          return unless node
+
+          node.attributes['documentation']&.value
+        end
+
+        def lookup_entity_name(xmi_id)
+          xmi_cache[xmi_id] ||= model_node_name_by_xmi_id(xmi_id)
+          xmi_cache[xmi_id]
+        end
+
+        def model_node_name_by_xmi_id(xmi_id)
+          node = main_model.xpath(%Q(//*[@xmi:id="#{xmi_id}"])).first
+          return unless node
+
+          node.attributes['name']&.value
         end
       end
     end

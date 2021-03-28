@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "hashie", "~> 4.1.0"
   spec.add_runtime_dependency "thor", "~> 1.0"
-  spec.add_runtime_dependency "lutaml-uml", "~> 0.2"
+  spec.add_runtime_dependency "lutaml-uml"
 
   spec.add_development_dependency "bundler", "~> 2.0"
   spec.add_development_dependency "byebug"
