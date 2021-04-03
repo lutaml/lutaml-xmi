@@ -55,9 +55,10 @@ module Lutaml
               xmi_id: klass['xmi:id'],
               xmi_uuid: klass['xmi:uuid'],
               name: klass['name'],
+              is_abstract: klass['is_abstract'],
               attributes: serialize_class_attributes(klass),
               associations: serialize_model_associations(klass),
-              definition: lookup_model_definition(klass)
+              definition: lookup_klass_definition(klass)
             }
           end
         end
@@ -77,7 +78,8 @@ module Lutaml
               xmi_id: enum['xmi:id'],
               xmi_uuid: enum['xmi:uuid'],
               name: enum['name'],
-              attributes: attributes
+              attributes: attributes,
+              definition: lookup_klass_definition(enum)
             }
           end
         end
@@ -111,17 +113,26 @@ module Lutaml
               # xmi_id: klass['xmi:id'],
               name: attribute['name'],
               type: lookup_entity_name(type['xmi:idref']) || type['xmi:idref'],
-              cardinality: [ATTRIBUTE_MAPPINGS[lowerValue["xmi:type"]], ATTRIBUTE_MAPPINGS[upperValue["xmi:type"]]].compact
+              cardinality: [ATTRIBUTE_MAPPINGS[lowerValue["xmi:type"]], ATTRIBUTE_MAPPINGS[upperValue["xmi:type"]]].compact,
+              definition: lookup_attribute_definition(attribute)
             }
           end
         end
 
-        def lookup_model_definition(klass)
-          xmi_id = klass['xmi:id']
-          node = main_model.xpath(%Q(//element[@xmi:idref="#{xmi_id}"]/properties)).first
-          return unless node
+        def lookup_klass_definition(node)
+          xmi_id = node['xmi:id']
+          doc_node = main_model.xpath(%Q(//element[@xmi:idref="#{xmi_id}"]/properties)).first
+          return unless doc_node
 
-          node.attributes['documentation']&.value
+          doc_node.attributes['documentation']&.value
+        end
+
+        def lookup_attribute_definition(node)
+          xmi_id = node['xmi:id']
+          doc_node = main_model.xpath(%Q(//attribute[@xmi:idref="#{xmi_id}"]/documentation)).first
+          return unless doc_node
+
+          doc_node.attributes['value']&.value
         end
 
         def lookup_entity_name(xmi_id)
