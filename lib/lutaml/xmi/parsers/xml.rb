@@ -55,10 +55,11 @@ module Lutaml
               xmi_id: klass['xmi:id'],
               xmi_uuid: klass['xmi:uuid'],
               name: klass['name'],
-              is_abstract: klass['is_abstract'],
               attributes: serialize_class_attributes(klass),
               associations: serialize_model_associations(klass),
-              definition: lookup_klass_definition(klass)
+              is_abstract: doc_node_attribute_value(klass, 'isAbstract'),
+              definition: doc_node_attribute_value(klass, 'documentation'),
+              stereotype: doc_node_attribute_value(klass, 'stereotype')
             }
           end
         end
@@ -79,7 +80,8 @@ module Lutaml
               xmi_uuid: enum['xmi:uuid'],
               name: enum['name'],
               attributes: attributes,
-              definition: lookup_klass_definition(enum)
+              definition: doc_node_attribute_value(enum, 'documentation'),
+              stereotype: doc_node_attribute_value(enum, 'stereotype')
             }
           end
         end
@@ -119,12 +121,12 @@ module Lutaml
           end
         end
 
-        def lookup_klass_definition(node)
+        def doc_node_attribute_value(node, attr_name)
           xmi_id = node['xmi:id']
           doc_node = main_model.xpath(%Q(//element[@xmi:idref="#{xmi_id}"]/properties)).first
           return unless doc_node
 
-          doc_node.attributes['documentation']&.value
+          doc_node.attributes[attr_name]&.value
         end
 
         def lookup_attribute_definition(node)
