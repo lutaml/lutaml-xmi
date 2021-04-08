@@ -7,9 +7,9 @@ module Lutaml
     module Parsers
       # Class for parsing .xmi schema files into ::Lutaml::Uml::Document
       class XML
-        ATTRIBUTE_MAPPINGS = {
-          "uml:LiteralInteger" => "1",
-          "uml:LiteralUnlimitedNatural" => "*"
+        LOVER_VALUE_MAPPINGS = {
+          "0" => "C",
+          "1" => "M"
         }
         attr_reader :main_model, :xmi_cache
 
@@ -89,9 +89,10 @@ module Lutaml
         def serialize_model_associations(klass)
           return unless klass.attributes['name']
 
-          klass.xpath('.//ownedAttribute/type').map do |assoc|
-            if assoc.attributes && assoc.attributes['idref']
-              id_ref = assoc.attributes['idref'].value
+          klass.xpath('.//ownedAttribute[@association]').map do |assoc|
+            type = assoc.xpath('.//type').first
+            if type && type.attributes && type.attributes['idref']
+              id_ref = type.attributes['idref'].value
               member_end = lookup_entity_name(id_ref)
             end
             if member_end
@@ -99,7 +100,8 @@ module Lutaml
                 xmi_id: assoc['xmi:id'],
                 xmi_uuid: assoc['xmi:uuid'],
                 name: assoc['name'],
-                member_end: member_end
+                member_end: member_end,
+                member_end_cardinality: { 'min' => cardinality_min_value(assoc), 'max' => cardinality_max_value(assoc) },
               }
             end
           end.compact
@@ -108,17 +110,33 @@ module Lutaml
         def serialize_class_attributes(klass)
           klass.xpath('.//ownedAttribute[@xmi:type="uml:Property"]').map do |attribute|
             type = attribute.xpath('.//type').first || {}
-            lowerValue = attribute.xpath('.//lowerValue').first || {}
-            upperValue = attribute.xpath('.//upperValue').first || {}
-            {
-              # TODO: xmi_id
-              # xmi_id: klass['xmi:id'],
-              name: attribute['name'],
-              type: lookup_entity_name(type['xmi:idref']) || type['xmi:idref'],
-              cardinality: [ATTRIBUTE_MAPPINGS[lowerValue["xmi:type"]], ATTRIBUTE_MAPPINGS[upperValue["xmi:type"]]].compact,
-              definition: lookup_attribute_definition(attribute)
-            }
-          end
+            if attribute.attributes['association'].nil?
+              {
+                # TODO: xmi_id
+                # xmi_id: klass['xmi:id'],
+                name: attribute['name'],
+                type: lookup_entity_name(type['xmi:idref']) || type['xmi:idref'],
+                is_derived: attribute['isDerived'],
+                cardinality: { 'min' => cardinality_min_value(attribute), 'max' => cardinality_max_value(attribute) },
+                definition: lookup_attribute_definition(attribute)
+              }
+            end
+          end.compact
+        end
+
+        def cardinality_min_value(node)
+          lower_value_node = node.xpath('.//lowerValue').first
+          return unless lower_value_node
+
+          lower_value = lower_value_node.attributes['value']&.value
+          LOVER_VALUE_MAPPINGS[lower_value]
+        end
+
+        def cardinality_max_value(node)
+          upper_value_node = node.xpath('.//upperValue').first
+          return unless upper_value_node
+
+          upper_value_node.attributes['value']&.value
         end
 
         def doc_node_attribute_value(node, attr_name)
