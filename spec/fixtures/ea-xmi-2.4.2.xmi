@@ -244,6 +244,41 @@
 						<upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="EAID_LI000064_49E6_4725_AC7B_382A34BB8935" value="1"/>
 					</ownedAttribute>
 				</packagedElement>
+				<packagedElement xmi:type="uml:Association" xmi:id="EAID_7F310A6F_F068_4c1d_8FFD_B01FE62D6D1C">
+					<memberEnd xmi:idref="EAID_dst310A6F_F068_4c1d_8FFD_B01FE62D6D1C"/>
+					<ownedEnd xmi:type="uml:Property" xmi:id="EAID_dst310A6F_F068_4c1d_8FFD_B01FE62D6D1C" association="EAID_7F310A6F_F068_4c1d_8FFD_B01FE62D6D1C">
+						<type xmi:idref="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					</ownedEnd>
+					<memberEnd xmi:idref="EAID_src310A6F_F068_4c1d_8FFD_B01FE62D6D1C"/>
+				</packagedElement>
+				<packagedElement xmi:type="uml:Class" xmi:id="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" name="TemporalGeometricPrimitive" isAbstract="true">
+					<ownedAttribute xmi:type="uml:Property" xmi:id="EAID_43D3DBAC_3887_4b74_8DBB_949F1AFDE20E" name="spatialDimension">
+						<type xmi:idref="EAID_12886CE2_182E_4081_8D05_E09B06F51177"/>
+						<lowerValue xmi:type="uml:LiteralInteger" xmi:id="EAID_LI000011_3887_4b74_8DBB_949F1AFDE20E" value="1"/>
+						<upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="EAID_LI000012_3887_4b74_8DBB_949F1AFDE20E" value="1"/>
+					</ownedAttribute>
+					<ownedAttribute xmi:type="uml:Property" xmi:id="EAID_5085D691_2244_4232_ACA0_CB0C32654079" name="temporalDimension">
+						<type xmi:idref="EAID_12886CE2_182E_4081_8D05_E09B06F51177"/>
+						<lowerValue xmi:type="uml:LiteralInteger" xmi:id="EAID_LI000013_2244_4232_ACA0_CB0C32654079" value="1"/>
+						<upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="EAID_LI000014_2244_4232_ACA0_CB0C32654079" value="1"/>
+					</ownedAttribute>
+					<generalization xmi:type="uml:Generalization" xmi:id="EAID_84688F21_D758_44ab_870D_69D890029769" general="EAID_AF08B23A_D40E_4e8a_B258_60C53D27E384"/>
+					<generalization xmi:type="uml:Generalization" xmi:id="EAID_AD6CE071_3261_4681_B8E1_25AE657BBCD2" general="EAID_82DA65AB_212B_44fd_BCDC_232A2AA22542"/>
+				</packagedElement>
+				<packagedElement xmi:type="uml:Association" xmi:id="EAID_25C1510D_9559_406f_867E_2A350C45C8A5" name="Realisation">
+					<memberEnd xmi:idref="EAID_dstC1510D_9559_406f_867E_2A350C45C8A5"/>
+					<memberEnd xmi:idref="EAID_srcC1510D_9559_406f_867E_2A350C45C8A5"/>
+					<ownedEnd xmi:type="uml:Property" xmi:id="EAID_srcC1510D_9559_406f_867E_2A350C45C8A5" name="topology" association="EAID_25C1510D_9559_406f_867E_2A350C45C8A5">
+						<type xmi:idref="EAID_AE0137BF_A059_4c07_B438_75C5D3A3705D"/>
+						<lowerValue xmi:type="uml:LiteralInteger" xmi:id="EAID_LI000015__9559_406f_867E_2A350C45C8A5" value="0"/>
+						<upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="EAID_LI000016__9559_406f_867E_2A350C45C8A5" value="*"/>
+					</ownedEnd>
+					<ownedEnd xmi:type="uml:Property" xmi:id="EAID_dstC1510D_9559_406f_867E_2A350C45C8A5" name="geometry" association="EAID_25C1510D_9559_406f_867E_2A350C45C8A5">
+						<type xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+						<lowerValue xmi:type="uml:LiteralInteger" xmi:id="EAID_LI000029__9559_406f_867E_2A350C45C8A5" value="0"/>
+						<upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="EAID_LI000030__9559_406f_867E_2A350C45C8A5" value="1"/>
+					</ownedEnd>
+				</packagedElement>
 			</packagedElement>
 			<packagedElement xmi:type="uml:Package" xmi:id="EAPK_6FEDD31A_6F40_4ed8_9230_600BB66D2296" name="Common Spatio-temporal Classes">
 				<packagedElement xmi:type="uml:Package" xmi:id="EAPK_C93A8CD8_53C7_4d95_8BC7_591AE2BB7563" name="Temporal and Zonal Geometry">
@@ -1216,6 +1251,249 @@
 			<appliedProfile xmi:type="uml:Profile" href="http://www.sparxsystems.com/profiles/thecustomprofile/1.0#thecustomprofile"/>
 		</profileApplication>
 	</uml:Model>
+	<xmi:Extension extender="Enterprise Architect" extenderID="6.5">
+		<elements>
+			<element xmi:idref="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA" xmi:type="uml:Class" name="TemporalGeometricComplex" scope="public">
+				<model package="EAPK_A6E46DCC_4D34_4dc0_AD3E_D006699DC90B" tpos="8" ea_localid="195" ea_eleType="element"/>
+				<properties documentation="&lt;b&gt;Temporal Geometric Complex&lt;/b&gt; implements geometric &lt;b&gt;Complex&lt;/b&gt; for &lt;b&gt;Temporal Geometry.&lt;/b&gt;" isSpecification="false" sType="Class" nType="0" scope="public" stereotype="interface" isRoot="false" isLeaf="false" isAbstract="true" isActive="false"/>
+				<project author="Gibb Robert" version="1.0" phase="1.0" created="2019-12-28 17:33:48" modified="2020-12-04 15:29:48" complexity="1" status="Proposed"/>
+				<code gentype="Java"/>
+				<style appearance="BackColor=-1;BorderColor=-1;BorderWidth=-1;FontColor=-1;VSwimLanes=1;HSwimLanes=1;BorderStyle=0;"/>
+				<tags>
+					<tag xmi:id="EAID_1538380D_5A39_4652_A61F_E3A59A665D40" name="callableElement" modelElement="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					<tag xmi:id="EAID_99754119_9123_4fff_B8D8_4A3959990702" name="documentation" modelElement="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					<tag xmi:id="EAID_D30569CC_A71F_406c_8270_173E28C03FBC" name="implementationRef" modelElement="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					<tag xmi:id="EAID_36A4E32B_02A7_4ba2_B8DF_2C05DDD08030" name="operationRefs" modelElement="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+				</tags>
+				<xrefs value="$XREFPROP=$XID={0FF4F100-7C89-4d8e-85B8-2A94D1E7D5B1}$XID;$NAM=Stereotypes$NAM;$TYP=element property$TYP;$VIS=Public$VIS;$PAR=0$PAR;$DES=@STEREO;Name=interface;GUID={5053837D-425B-435d-8D8B-C0487035B858};@ENDSTEREO;$DES;$CLT={60A00B1F-43C3-433b-8060-2EB473EEE6BA}$CLT;$SUP=&lt;none&gt;$SUP;$ENDXREF;"/>
+				<extendedProperties tagged="0" package_name="Temporal Geometry and Topology"/>
+				<links>
+					<Generalization xmi:id="EAID_FBC084CC_4070_4dd5_8276_8A47DE1A72CD" start="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA" end="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+					<Association xmi:id="EAID_7EB3B4C8_5C04_473c_A4D8_DE460008BE7F" start="EAID_00ACADD9_EF9A_4ac8_8257_3DB6227AF948" end="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					<Aggregation xmi:id="EAID_7F310A6F_F068_4c1d_8FFD_B01FE62D6D1C" start="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" end="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+					<Aggregation xmi:id="EAID_F502A1E3_E24C_4549_8B9F_8AF1E3F428C6" start="EAID_B1233577_2573_4def_A92F_1C0E83443842" end="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+				</links>
+			</element>
+			<element xmi:idref="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B" xmi:type="uml:Class" name="TemporalGeometricCollection" scope="public">
+				<model package="EAPK_A6E46DCC_4D34_4dc0_AD3E_D006699DC90B" tpos="9" ea_localid="201" ea_eleType="element"/>
+				<properties documentation="&lt;b&gt;Temporal Geometric Collection&lt;/b&gt; implements geometric &lt;b&gt;Collection&lt;/b&gt; for &lt;b&gt;Temporal Geometry.&lt;/b&gt;&#xA;" isSpecification="false" sType="Class" nType="0" scope="public" stereotype="interface" isRoot="false" isLeaf="false" isAbstract="true" isActive="false"/>
+				<project author="Gibb Robert" version="1.0" phase="1.0" created="2020-02-18 09:35:33" modified="2020-12-04 15:29:52" complexity="1" status="Proposed"/>
+				<code gentype="Java"/>
+				<style appearance="BackColor=-1;BorderColor=-1;BorderWidth=-1;FontColor=-1;VSwimLanes=1;HSwimLanes=1;BorderStyle=0;"/>
+				<tags>
+					<tag xmi:id="EAID_70343355_16F7_406d_82A7_D63CA70124F7" name="callableElement" modelElement="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+					<tag xmi:id="EAID_9F0A2876_7854_4928_A1F7_B7F0CB465185" name="documentation" modelElement="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+					<tag xmi:id="EAID_DAEED741_8AB5_4e19_8B96_2DBD158591E3" name="implementationRef" modelElement="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+					<tag xmi:id="EAID_B9494DCD_1447_4e75_9679_BA9F22C0C8F5" name="operationRefs" modelElement="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+				</tags>
+				<xrefs value="$XREFPROP=$XID={53451E9A-C43C-4342-BA8D-969F2BAACB3A}$XID;$NAM=Stereotypes$NAM;$TYP=element property$TYP;$VIS=Public$VIS;$PAR=0$PAR;$DES=@STEREO;Name=interface;GUID={5053837D-425B-435d-8D8B-C0487035B858};@ENDSTEREO;$DES;$CLT={66ADAA69-93B4-4837-A00D-1AE9BB6FB53B}$CLT;$SUP=&lt;none&gt;$SUP;$ENDXREF;"/>
+				<extendedProperties tagged="0" package_name="Temporal Geometry and Topology"/>
+				<links>
+					<Generalization xmi:id="EAID_3B3D9500_1668_4529_A500_03753B605AA9" start="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B" end="EAID_82DA65AB_212B_44fd_BCDC_232A2AA22542"/>
+					<Aggregation xmi:id="EAID_AD3FB2D7_370B_45ea_A98B_40B5B296E946" start="EAID_82DA65AB_212B_44fd_BCDC_232A2AA22542" end="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+					<Generalization xmi:id="EAID_FBC084CC_4070_4dd5_8276_8A47DE1A72CD" start="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA" end="EAID_66ADAA69_93B4_4837_A00D_1AE9BB6FB53B"/>
+				</links>
+			</element>
+		</elements>
+		<element xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" xmi:type="uml:Class" name="TemporalGeometricPrimitive" scope="public">
+			<model package="EAPK_A6E46DCC_4D34_4dc0_AD3E_D006699DC90B" tpos="5" ea_localid="200" ea_eleType="element"/>
+			<properties documentation="&lt;b&gt;Temporal Geometric Primitive &lt;/b&gt;implements geometric &lt;b&gt;Primitive &lt;/b&gt;for &lt;b&gt;Temporal Geometry.&lt;/b&gt;" isSpecification="false" sType="Class" nType="0" scope="public" stereotype="interface" isRoot="false" isLeaf="false" isAbstract="true" isActive="false"/>
+			<project version="2006" phase="IS" created="2020-03-09 13:56:11" modified="2020-12-04 15:28:44" complexity="2" status="Approved"/>
+			<code/>
+			<style appearance="BackColor=-1;BorderColor=-1;BorderWidth=-1;FontColor=-1;VSwimLanes=1;HSwimLanes=1;BorderStyle=0;"/>
+			<tags>
+				<tag xmi:id="EAID_F96414D6_F8FE_4936_8DC7_D9B30AED6A66" name="callableElement" modelElement="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<tag xmi:id="EAID_5CE471BA_BDEB_4b9b_B372_B503E8873A6B" name="documentation" modelElement="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<tag xmi:id="EAID_268A14D8_E953_4ca3_9CCF_E0C12A3156B4" name="implementationRef" modelElement="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<tag xmi:id="EAID_0A68E48A_B8F4_4012_8D7C_B0EA4CDA134A" name="operationRefs" modelElement="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<tag xmi:id="EAID_2B2032F4_C702_40ce_8058_A02DBBF614CD" name="persistence" value="persistent" modelElement="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+			</tags>
+			<xrefs value="$XREFPROP=$XID={6A6ED87F-D2CD-406e-940C-7AE9E61D24FB}$XID;$NAM=Stereotypes$NAM;$TYP=element property$TYP;$VIS=Public$VIS;$PAR=0$PAR;$DES=@STEREO;Name=interface;GUID={5053837D-425B-435d-8D8B-C0487035B858};@ENDSTEREO;$DES;$CLT={37BF1557-0370-435d-94BB-8FCC4574561B}$CLT;$SUP=&lt;none&gt;$SUP;$ENDXREF;$XREFPROP=$XID={93706A91-553C-4a70-9F58-5D3E7B865678}$XID;$NAM=CustomProperties$NAM;$TYP=element property$TYP;$VIS=Public$VIS;$DES=@PROP=@NAME=isActive@ENDNAME;@TYPE=Boolean@ENDTYPE;@VALU=@ENDVALU;@PRMT=@ENDPRMT;@ENDPROP;$DES;$CLT={37BF1557-0370-435d-94BB-8FCC4574561B}$CLT;$SUP=&lt;none&gt;$SUP;$ENDXREF;"/>
+			<extendedProperties tagged="0" package_name="Temporal Geometry and Topology" persistence="Persistent"/>
+			<attributes>
+				<attribute xmi:idref="EAID_43D3DBAC_3887_4b74_8DBB_949F1AFDE20E" name="spatialDimension" scope="Public">
+					<initial/>
+					<documentation value="Dimension of its spatial geometry component."/>
+					<model ea_localid="417" ea_guid="{43D3DBAC-3887-4b74-8DBB-949F1AFDE20E}"/>
+					<properties type="Integer" derived="0" precision="0" collection="false" length="0" static="0" duplicates="0" changeability="changeable"/>
+					<coords ordered="0" scale="0"/>
+					<containment containment="Not Specified" position="0"/>
+					<stereotype/>
+					<bounds lower="1" upper="1"/>
+					<options/>
+					<style/>
+					<styleex value="volatile=0;union=0;"/>
+					<tags/>
+					<xrefs/>
+				</attribute>
+				<attribute xmi:idref="EAID_5085D691_2244_4232_ACA0_CB0C32654079" name="temporalDimension" scope="Public">
+					<initial/>
+					<documentation value="Dimension of its temporal geometry component."/>
+					<model ea_localid="418" ea_guid="{5085D691-2244-4232-ACA0-CB0C32654079}"/>
+					<properties type="Integer" derived="0" precision="0" collection="false" length="0" static="0" duplicates="0" changeability="changeable"/>
+					<coords ordered="0" scale="0"/>
+					<containment containment="Not Specified" position="1"/>
+					<stereotype/>
+					<bounds lower="1" upper="1"/>
+					<options/>
+					<style/>
+					<styleex value="volatile=0;union=0;"/>
+					<tags/>
+					<xrefs/>
+				</attribute>
+			</attributes>
+			<constraints>
+				<constraint name="self.coordinateDimension &lt;= 1&#xA;&#xA;" type="Invariant" weight="0.00" status="Approved"/>
+				<constraint name="self.rsid.CoordinateSystem = TemporalCS" type="Invariant" weight="0.00" status="Approved"/>
+				<constraint name="self.spatialDimension.isEmpty = True" type="Invariant" weight="0.00" status="Approved"/>
+				<constraint name="self.type.in{point,line} = True" type="Invariant" weight="0.00" status="Approved"/>
+			</constraints>
+			<links>
+				<Aggregation xmi:id="EAID_7F310A6F_F068_4c1d_8FFD_B01FE62D6D1C" start="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" end="EAID_60A00B1F_43C3_433b_8060_2EB473EEE6BA"/>
+				<Generalization xmi:id="EAID_84688F21_D758_44ab_870D_69D890029769" start="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" end="EAID_AF08B23A_D40E_4e8a_B258_60C53D27E384"/>
+				<Generalization xmi:id="EAID_AD6CE071_3261_4681_B8E1_25AE657BBCD2" start="EAID_37BF1557_0370_435d_94BB_8FCC4574561B" end="EAID_82DA65AB_212B_44fd_BCDC_232A2AA22542"/>
+				<Association xmi:id="EAID_25C1510D_9559_406f_867E_2A350C45C8A5" start="EAID_AE0137BF_A059_4c07_B438_75C5D3A3705D" end="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<Generalization xmi:id="EAID_60129D98_D599_4e3c_9DC3_37724601FFD7" start="EAID_37ED45D9_A247_40c2_A156_6546916DA8BB" end="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+				<Generalization xmi:id="EAID_F43854F6_4D07_4e42_834F_434CCAAF0E4B" start="EAID_60BA6F15_2E36_4995_B3A8_C5389797D9A2" end="EAID_37BF1557_0370_435d_94BB_8FCC4574561B"/>
+			</links>
+		</element>
+		<connector xmi:idref="EAID_84688F21_D758_44ab_870D_69D890029769">
+			<source xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B">
+				<model ea_localid="200" type="Class" name="TemporalGeometricPrimitive"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="false"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</source>
+			<target xmi:idref="EAID_AF08B23A_D40E_4e8a_B258_60C53D27E384">
+				<model ea_localid="898" type="Interface" name="Primitive"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="true"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</target>
+			<model ea_localid="729"/>
+			<properties ea_type="Generalization" direction="Source -&gt; Destination"/>
+			<parameterSubstitutions/>
+			<documentation/>
+			<appearance linemode="3" linecolor="-1" linewidth="0" seqno="0" headStyle="0" lineStyle="0"/>
+			<labels/>
+			<extendedProperties virtualInheritance="0"/>
+			<style/>
+			<xrefs/>
+			<tags/>
+		</connector>
+		<connector xmi:idref="EAID_AD6CE071_3261_4681_B8E1_25AE657BBCD2">
+			<source xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B">
+				<model ea_localid="200" type="Class" name="TemporalGeometricPrimitive"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="false"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</source>
+			<target xmi:idref="EAID_82DA65AB_212B_44fd_BCDC_232A2AA22542">
+				<model ea_localid="199" type="Class" name="TemporalGeometry"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="true"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</target>
+			<model ea_localid="734"/>
+			<properties ea_type="Generalization" direction="Source -&gt; Destination"/>
+			<parameterSubstitutions/>
+			<documentation/>
+			<appearance linemode="3" linecolor="-1" linewidth="0" seqno="0" headStyle="0" lineStyle="0"/>
+			<labels/>
+			<extendedProperties virtualInheritance="0"/>
+			<style/>
+			<xrefs/>
+			<tags/>
+		</connector>
+		<connector xmi:idref="EAID_60129D98_D599_4e3c_9DC3_37724601FFD7">
+			<source xmi:idref="EAID_37ED45D9_A247_40c2_A156_6546916DA8BB">
+				<model ea_localid="194" type="Class" name="Interval"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="false"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</source>
+			<target xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B">
+				<model ea_localid="200" type="Class" name="TemporalGeometricPrimitive"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="true"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</target>
+			<model ea_localid="746"/>
+			<properties ea_type="Generalization" direction="Source -&gt; Destination"/>
+			<parameterSubstitutions/>
+			<documentation/>
+			<appearance linemode="3" linecolor="-1" linewidth="0" seqno="0" headStyle="0" lineStyle="0"/>
+			<labels/>
+			<extendedProperties virtualInheritance="0"/>
+			<style/>
+			<xrefs/>
+			<tags/>
+		</connector>
+		<connector xmi:idref="EAID_F43854F6_4D07_4e42_834F_434CCAAF0E4B">
+			<source xmi:idref="EAID_60BA6F15_2E36_4995_B3A8_C5389797D9A2">
+				<model ea_localid="196" type="Class" name="Instant"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="false"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</source>
+			<target xmi:idref="EAID_37BF1557_0370_435d_94BB_8FCC4574561B">
+				<model ea_localid="200" type="Class" name="TemporalGeometricPrimitive"/>
+				<role visibility="Public" targetScope="instance"/>
+				<type aggregation="none" containment="Unspecified"/>
+				<constraints/>
+				<modifiers isOrdered="false" changeable="none" isNavigable="true"/>
+				<style value="Union=0;Derived=0;AllowDuplicates=0;"/>
+				<documentation/>
+				<xrefs/>
+				<tags/>
+			</target>
+			<model ea_localid="741"/>
+			<properties ea_type="Generalization" direction="Source -&gt; Destination"/>
+			<parameterSubstitutions/>
+			<documentation/>
+			<appearance linemode="3" linecolor="-1" linewidth="0" seqno="0" headStyle="0" lineStyle="0"/>
+			<labels/>
+			<extendedProperties virtualInheritance="0"/>
+			<style/>
+			<xrefs/>
+			<tags/>
+		</connector>
+	</xmi:Extension>
 	<thecustomprofile:Bibliography base_Class="EAID_D832D6D8_0518_43f7_9166_7A4E3E8605AA"/>
 	<thecustomprofile:BasicDoc base_Class="EAID_10AD8D60_9972_475a_AB7E_FA40212D5297"/>
 	<thecustomprofile:enumeration base_Enumeration="EAID_E497ABDA_05EF_416a_A461_03535864970D"/>
