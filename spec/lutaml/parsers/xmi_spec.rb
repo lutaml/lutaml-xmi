@@ -16,6 +16,7 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           Requirement
           RequirementSubpart
           RequirementType
+          TemporalGeometricPrimitive
         ]
       end
       let(:expected_class_xmi_ids) do
@@ -28,6 +29,7 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           EAID_2AC20C81_1E83_400d_B098_BAB784395E06
           EAID_035D8176_5E9E_42c8_B447_64411AE96F57
           EAID_C1155D80_E68B_46d5_ADE5_F5639486163D
+          EAID_37BF1557_0370_435d_94BB_8FCC4574561B
         ]
       end
       let(:expected_enum_names) { ["ObligationType"] }
@@ -84,6 +86,15 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           EAJava_RequirementSubpart_0..___
         ]
       end
+      let(:expected_association_names) do
+        %w[
+          TemporalGeometricPrimitive
+          TemporalGeometry
+          TemporalTopologicalPrimitive
+          Interval
+          Instant
+        ]
+      end
       let(:first_package) { parse.packages.first }
       let(:first_nested_package) { parse.packages.first.packages.first }
 
@@ -116,8 +127,17 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
       end
 
       it "correctly parses associations for class" do
-        klass = first_nested_package.classes.find { |entity| entity.name == 'BibliographicItem' }
-        expect(klass.associations.map(&:member_end)).to(eq(['RequirementType']))
+        klass = first_nested_package.classes.find { |entity| entity.name == 'TemporalGeometricPrimitive' }
+        expect(klass.associations.map(&:member_end).compact).to(eq(expected_association_names))
+
+        inheritance = klass.associations.find { |entity| entity.member_end == 'TemporalGeometry' }
+        expect(inheritance.member_end_type).to eq('inheritance')
+        expect(inheritance.member_end_cardinality).to eq({"min"=>"C", "max"=>"*"})
+
+        aggregation = klass.associations.find { |entity| entity.member_end == 'TemporalTopologicalPrimitive' }
+        expect(aggregation.member_end_attribute_name).to eq('topology')
+        expect(aggregation.member_end_type).to eq('aggregation')
+        expect(aggregation.member_end_cardinality).to eq({"min"=>"C", "max"=>"*"})
       end
     end
   end
