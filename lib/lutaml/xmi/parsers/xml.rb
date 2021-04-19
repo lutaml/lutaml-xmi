@@ -91,7 +91,7 @@ module Lutaml
           xmi_id = klass["xmi:id"]
           main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/links/*)).map do |link|
             member_end, member_end_type, member_end_cardinality, member_end_attribute_name = serialize_member_type(xmi_id, link)
-            if member_end && member_end != klass["name"]
+            if member_end && ((member_end_type != 'aggregation') || (member_end_type == 'aggregation' && member_end_attribute_name))
               {
                 xmi_id: link["xmi:id"],
                 member_end: member_end,
