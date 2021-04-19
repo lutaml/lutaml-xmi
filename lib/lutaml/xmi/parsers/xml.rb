@@ -91,13 +91,15 @@ module Lutaml
           xmi_id = klass["xmi:id"]
           main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/links/*)).map do |link|
             member_end, member_end_type, member_end_cardinality, member_end_attribute_name = serialize_member_type(xmi_id, link)
-            {
-              xmi_id: link["xmi:id"],
-              member_end: member_end,
-              member_end_type: member_end_type,
-              member_end_cardinality: member_end_cardinality,
-              member_end_attribute_name: member_end_attribute_name,
-            }
+            if member_end && member_end != klass["name"]
+              {
+                xmi_id: link["xmi:id"],
+                member_end: member_end,
+                member_end_type: member_end_type,
+                member_end_cardinality: member_end_cardinality,
+                member_end_attribute_name: member_end_attribute_name,
+              }
+            end
           end
         end
 
@@ -111,6 +113,7 @@ module Lutaml
         end
 
         def serialize_member_type(owned_xmi_id, link)
+          return if link.name == 'NoteLink'
           return generalization_association(owned_xmi_id, link) if link.name == "Generalization"
 
           xmi_id = link.attributes["start"].value
@@ -135,11 +138,12 @@ module Lutaml
           if link.attributes["start"].value == owned_xmi_id
             xmi_id = link.attributes["end"].value
             member_end_type = "inheritance"
+            member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
           else
             xmi_id = link.attributes["start"].value
             member_end_type = "generalization"
+            member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
           end
-          member_end = lookup_entity_name(xmi_id)
 
           member_end_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
           if member_end_node
@@ -203,12 +207,19 @@ module Lutaml
         end
 
         def lookup_entity_name(xmi_id)
-          xmi_cache[xmi_id] ||= model_node_name_by_xmi_id(xmi_id) || connector_source_name(xmi_id)
+          xmi_cache[xmi_id] ||= model_node_name_by_xmi_id(xmi_id)
           xmi_cache[xmi_id]
         end
 
         def connector_source_name(xmi_id)
           node = main_model.xpath(%(//source[@xmi:idref="#{xmi_id}"]/model)).first
+          return unless node
+
+          node.attributes["name"]&.value
+        end
+
+        def connector_target_name(xmi_id)
+          node = main_model.xpath(%(//target[@xmi:idref="#{xmi_id}"]/model)).first
           return unless node
 
           node.attributes["name"]&.value
