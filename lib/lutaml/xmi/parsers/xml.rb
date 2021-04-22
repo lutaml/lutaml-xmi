@@ -117,18 +117,30 @@ module Lutaml
           return generalization_association(owned_xmi_id, link) if link.name == "Generalization"
 
           xmi_id = link.attributes["start"].value
-          member_end = lookup_entity_name(xmi_id)
+          member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
 
-          member_end_node = if link.name == "Association"
-                              link_xmk_id = link["xmi:id"]
-                              main_model.xpath(%(//packagedElement[@xmi:id="#{link_xmk_id}"]//type[@xmi:idref="#{xmi_id}"])).first
-                            else
-                              main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
-                            end
-          if member_end_node
-            assoc = member_end_node.parent
-            member_end_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
-            member_end_attribute_name = assoc.attributes["name"]&.value
+          if link.name == "Association"
+            assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/source)).first
+            if assoc_connector
+              connector_type = assoc_connector.children.find { |node| node.name == 'type' }
+              if connector_type && connector_type.attributes['multiplicity']
+                cardinality = connector_type.attributes['multiplicity']&.value&.split('..')
+                cardinality.unshift('1') if cardinality.length == 1
+                min, max = cardinality
+              end
+              connector_role = assoc_connector.children.find { |node| node.name == 'role' }
+              if connector_role
+                member_end_attribute_name = connector_role.attributes["name"]&.value
+              end
+              member_end_cardinality = { "min" => LOVER_VALUE_MAPPINGS[min], "max" => max }
+            end
+          else
+            member_end_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
+            if member_end_node
+              assoc = member_end_node.parent
+              member_end_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
+              member_end_attribute_name = assoc.attributes["name"]&.value
+            end
           end
 
           [member_end, "aggregation", member_end_cardinality, member_end_attribute_name]
