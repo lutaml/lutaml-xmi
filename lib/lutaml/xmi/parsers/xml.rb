@@ -34,7 +34,7 @@ module Lutaml
           model = xmi_doc.xpath('//uml:Model[@xmi:type="uml:Model"]').first
           {
             name: model["name"],
-            packages: serialize_model_packages(model),
+            packages: serialize_model_packages(model)
           }
         end
 
@@ -42,9 +42,10 @@ module Lutaml
           model.xpath('./packagedElement[@xmi:type="uml:Package"]').map do |package|
             {
               name: package["name"],
-              packages: serialize_model_packages(package),
               classes: serialize_model_classes(package),
               enums: serialize_model_enums(package),
+              diagrams: serialize_model_diagrams(package),
+              packages: serialize_model_packages(package),
             }
           end
         end
@@ -83,6 +84,18 @@ module Lutaml
               attributes: attributes,
               definition: doc_node_attribute_value(enum, "documentation"),
               stereotype: doc_node_attribute_value(enum, "stereotype"),
+            }
+          end
+        end
+
+        def serialize_model_diagrams(node)
+          main_model.xpath(%(//diagrams/diagram/model[@package="#{node['xmi:id']}"])).map do |diagram_model|
+            diagram = diagram_model.parent
+            properties = diagram.children.find {|n| n.name == 'properties' }
+            {
+              xmi_id: diagram["xmi:id"],
+              name: properties["name"],
+              definition: properties.attributes['documentation']&.value
             }
           end
         end

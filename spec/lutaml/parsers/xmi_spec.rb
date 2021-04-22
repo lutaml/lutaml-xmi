@@ -139,6 +139,13 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
         expect(aggregation.member_end_type).to eq('aggregation')
         expect(aggregation.member_end_cardinality).to eq({"min"=>"C", "max"=>"*"})
       end
+
+      it "correctly parses diagrams for package" do
+        root_package = parse.packages.first
+        expect(root_package.diagrams.length).to(eq(2))
+        expect(root_package.diagrams.map(&:name)).to(eq(['Fig: DGGS Package Diagram', 'Fig: Context for Temporal Geometry and Topology']))
+        expect(root_package.diagrams.map(&:definition)).to(eq(['this is a documentation', '']))
+      end
     end
   end
 end
