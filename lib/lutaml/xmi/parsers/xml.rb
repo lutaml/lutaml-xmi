@@ -41,6 +41,7 @@ module Lutaml
         def serialize_model_packages(model)
           model.xpath('./packagedElement[@xmi:type="uml:Package"]').map do |package|
             {
+              xmi_id: package["xmi:id"],
               name: package["name"],
               classes: serialize_model_classes(package),
               enums: serialize_model_enums(package),
