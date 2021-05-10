@@ -45,6 +45,7 @@ module Lutaml
               name: package["name"],
               classes: serialize_model_classes(package),
               enums: serialize_model_enums(package),
+              data_types: serialize_model_data_types(package),
               diagrams: serialize_model_diagrams(package),
               packages: serialize_model_packages(package),
             }
@@ -59,6 +60,7 @@ module Lutaml
               name: klass["name"],
               attributes: serialize_class_attributes(klass),
               associations: serialize_model_associations(klass),
+              operations: serialize_class_operations(klass),
               constraints: serialize_class_constraints(klass),
               is_abstract: doc_node_attribute_value(klass, "isAbstract"),
               definition: doc_node_attribute_value(klass, "documentation"),
@@ -71,20 +73,38 @@ module Lutaml
           model.xpath('./packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
             attributes = enum
               .xpath('.//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]')
-              .map do |attribute|
-              {
-                # TODO: xmi_id
-                # xmi_id: enum['xmi:id'],
-                type: attribute["name"],
-              }
-            end
+              .map do |value|
+                type = value.xpath(".//type").first || {}
+                {
+                  name: value["name"],
+                  type: lookup_entity_name(type["xmi:idref"]) || type["xmi:idref"],
+                  definition: lookup_attribute_definition(value),
+                }
+              end
             {
               xmi_id: enum["xmi:id"],
               xmi_uuid: enum["xmi:uuid"],
               name: enum["name"],
-              attributes: attributes,
+              values: attributes,
               definition: doc_node_attribute_value(enum, "documentation"),
               stereotype: doc_node_attribute_value(enum, "stereotype"),
+            }
+          end
+        end
+
+        def serialize_model_data_types(model)
+          model.xpath('./packagedElement[@xmi:type="uml:DataType"]').map do |klass|
+            {
+              xmi_id: klass["xmi:id"],
+              xmi_uuid: klass["xmi:uuid"],
+              name: klass["name"],
+              attributes: serialize_class_attributes(klass),
+              operations: serialize_class_operations(klass),
+              associations: serialize_model_associations(klass),
+              constraints: serialize_class_constraints(klass),
+              is_abstract: doc_node_attribute_value(klass, "isAbstract"),
+              definition: doc_node_attribute_value(klass, "documentation"),
+              stereotype: doc_node_attribute_value(klass, "stereotype"),
             }
           end
         end
@@ -115,6 +135,20 @@ module Lutaml
               }
             end
           end
+        end
+
+        def serialize_class_operations(klass)
+          klass.xpath('.//ownedOperation').map do |attribute|
+            type = attribute.xpath(".//type").first || {}
+            if attribute.attributes["association"].nil?
+              {
+                # TODO: xmi_id
+                # xmi_id: klass['xmi:id'],
+                name: attribute["name"],
+                definition: lookup_attribute_definition(attribute),
+              }
+            end
+          end.compact
         end
 
         def serialize_class_constraints(klass)
