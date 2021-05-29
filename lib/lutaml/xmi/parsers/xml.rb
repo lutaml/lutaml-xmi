@@ -48,6 +48,7 @@ module Lutaml
               data_types: serialize_model_data_types(package),
               diagrams: serialize_model_diagrams(package),
               packages: serialize_model_packages(package),
+              definition: doc_node_attribute_value(package, "documentation")
             }
           end
         end
