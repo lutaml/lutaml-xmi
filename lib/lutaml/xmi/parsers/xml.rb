@@ -48,7 +48,8 @@ module Lutaml
               data_types: serialize_model_data_types(package),
               diagrams: serialize_model_diagrams(package),
               packages: serialize_model_packages(package),
-              definition: doc_node_attribute_value(package, "documentation")
+              definition: doc_node_attribute_value(package, "documentation"),
+              stereotype: doc_node_attribute_value(package, "stereotype")
             }
           end
         end
@@ -59,13 +60,14 @@ module Lutaml
               xmi_id: klass["xmi:id"],
               xmi_uuid: klass["xmi:uuid"],
               name: klass["name"],
+              package: model,
               attributes: serialize_class_attributes(klass),
               associations: serialize_model_associations(klass),
               operations: serialize_class_operations(klass),
               constraints: serialize_class_constraints(klass),
               is_abstract: doc_node_attribute_value(klass, "isAbstract"),
               definition: doc_node_attribute_value(klass, "documentation"),
-              stereotype: doc_node_attribute_value(klass, "stereotype"),
+              stereotype: doc_node_attribute_value(klass, "stereotype")
             }
           end
         end
