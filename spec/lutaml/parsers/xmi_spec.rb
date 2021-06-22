@@ -88,7 +88,6 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
       end
       let(:expected_association_names) do
         %w[
-          TemporalGeometricPrimitive
           Primitive
           TemporalGeometry
           Interval
@@ -133,11 +132,6 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
         inheritance = klass.associations.find { |entity| entity.member_end == 'TemporalGeometry' }
         expect(inheritance.member_end_type).to eq('inheritance')
         expect(inheritance.member_end_cardinality).to eq({"min"=>"C", "max"=>"*"})
-
-        aggregation = klass.associations.find { |entity| entity.member_end == 'TemporalGeometricPrimitive' }
-        expect(aggregation.member_end_attribute_name).to eq('element')
-        expect(aggregation.member_end_type).to eq('aggregation')
-        expect(aggregation.member_end_cardinality).to eq({"min"=>"C", "max"=>"*"})
       end
 
       it "correctly parses diagrams for package" do
