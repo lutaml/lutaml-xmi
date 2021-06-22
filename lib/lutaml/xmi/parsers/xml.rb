@@ -127,10 +127,13 @@ module Lutaml
         def serialize_model_associations(klass)
           xmi_id = klass["xmi:id"]
           main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/links/*)).map do |link|
-            member_end, member_end_type, member_end_cardinality, member_end_attribute_name = serialize_member_type(xmi_id, link)
-            owned_end_cardinality, owned_end_attribute_name = serialize_owned_type(xmi_id, link)
+            link_member_name = link.attributes["start"].value == xmi_id ? "end" : "start"
+            linke_owner_name = link_member_name == "start" ? "end" : "start"
+            member_end, member_end_type, member_end_cardinality, member_end_attribute_name = serialize_member_type(xmi_id, link, link_member_name)
+            owner_end, owner_end_cardinality, owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
             if member_end && ((member_end_type != 'aggregation') || (member_end_type == 'aggregation' && member_end_attribute_name))
-              definition_node = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/target/documentation)).first
+              doc_node_name = link_member_name == "start" ? "source" : "target"
+              definition_node = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/#{doc_node_name}/documentation)).first
               definition = definition_node.attributes['value']&.value if definition_node
               {
                 xmi_id: link["xmi:id"],
@@ -138,6 +141,7 @@ module Lutaml
                 member_end_type: member_end_type,
                 member_end_cardinality: member_end_cardinality,
                 member_end_attribute_name: member_end_attribute_name,
+                owner_end: owner_end,
                 definition: definition
               }
             end
@@ -167,11 +171,12 @@ module Lutaml
           end
         end
 
-        def serialize_owned_type(owned_xmi_id, link)
+        def serialize_owned_type(owner_xmi_id, link, linke_owner_name)
           return if link.name == 'NoteLink'
-          return generalization_association(owned_xmi_id, link) if link.name == "Generalization"
+          return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
 
-          xmi_id = link.attributes["start"].value
+          xmi_id = link.attributes[linke_owner_name].value
+          owner_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
 
           if link.name == "Association"
             assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/source)).first
@@ -197,18 +202,19 @@ module Lutaml
             end
           end
 
-          [owned_cardinality, owned_attribute_name]
+          [owner_end, owned_cardinality, owned_attribute_name]
         end
 
-        def serialize_member_type(owned_xmi_id, link)
+        def serialize_member_type(owner_xmi_id, link, link_member_name)
           return if link.name == 'NoteLink'
-          return generalization_association(owned_xmi_id, link) if link.name == "Generalization"
+          return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
 
-          xmi_id = link.attributes["start"].value
+          xmi_id = link.attributes[link_member_name].value
           member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
 
           if link.name == "Association"
-            assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/target)).first
+            connector_type = link_member_name == "start" ? "source" : "target"
+            assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/#{connector_type})).first
             if assoc_connector
               connector_type = assoc_connector.children.find { |node| node.name == 'type' }
               if connector_type && connector_type.attributes['multiplicity']
@@ -234,8 +240,8 @@ module Lutaml
           [member_end, "aggregation", member_end_cardinality, member_end_attribute_name]
         end
 
-        def generalization_association(owned_xmi_id, link)
-          if link.attributes["start"].value == owned_xmi_id
+        def generalization_association(owner_xmi_id, link)
+          if link.attributes["start"].value == owner_xmi_id
             xmi_id = link.attributes["end"].value
             member_end_type = "inheritance"
             member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
