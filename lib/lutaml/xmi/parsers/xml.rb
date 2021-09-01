@@ -55,7 +55,7 @@ module Lutaml
         end
 
         def serialize_model_classes(model)
-          model.xpath('./packagedElement[@xmi:type="uml:Class"]').map do |klass|
+          model.xpath('./packagedElement[@xmi:type="uml:Class" or @xmi:type="uml:AssociationClass"]').map do |klass|
             {
               xmi_id: klass["xmi:id"],
               xmi_uuid: klass["xmi:uuid"],
@@ -145,7 +145,7 @@ module Lutaml
                 definition: definition
               }
             end
-          end
+          end.uniq
         end
 
         def serialize_class_operations(klass)
@@ -167,6 +167,7 @@ module Lutaml
             {
               xmi_id: constraint["xmi:id"],
               body: constraint["name"],
+              definition: constraint["description"]
             }
           end
         end
