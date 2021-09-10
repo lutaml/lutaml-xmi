@@ -109,7 +109,7 @@ RSpec.describe Lutaml::XMI::Parsers::XML do
           .to(eq(["Temporal and Zonal Geometry", "Temporal and Zonal RS using Identifiers"]))
       end
 
-      it "correctly parses package` classes" do
+      it "correctly parses package classes" do
         expect(first_nested_package.classes.map(&:name)).to(eq(expected_class_names))
         expect(first_nested_package.classes.map(&:xmi_id)).to(eq(expected_class_xmi_ids))
       end
