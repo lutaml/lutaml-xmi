@@ -1,4 +1,5 @@
 require "nokogiri"
+require "htmlentities"
 require "lutaml/uml/has_attributes"
 require "lutaml/uml/document"
 
@@ -167,7 +168,7 @@ module Lutaml
             {
               xmi_id: constraint["xmi:id"],
               body: constraint["name"],
-              definition: constraint["description"]
+              definition: HTMLEntities.new.decode(constraint["description"])
             }
           end
         end
