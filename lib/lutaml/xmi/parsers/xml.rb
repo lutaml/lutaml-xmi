@@ -1,4 +1,5 @@
 require "nokogiri"
+require "htmlentities"
 require "lutaml/uml/has_attributes"
 require "lutaml/uml/document"
 
@@ -7,7 +8,7 @@ module Lutaml
     module Parsers
       # Class for parsing .xmi schema files into ::Lutaml::Uml::Document
       class XML
-        LOVER_VALUE_MAPPINGS = {
+        LOWER_VALUE_MAPPINGS = {
           "0" => "C",
           "1" => "M",
         }.freeze
@@ -167,7 +168,7 @@ module Lutaml
             {
               xmi_id: constraint["xmi:id"],
               body: constraint["name"],
-              definition: constraint["description"]
+              definition: HTMLEntities.new.decode(constraint["description"])
             }
           end
         end
@@ -192,7 +193,7 @@ module Lutaml
               if connector_role
                 owned_attribute_name = connector_role.attributes["name"]&.value
               end
-              owned_cardinality = { "min" => LOVER_VALUE_MAPPINGS[min], "max" => max }
+              owned_cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
             end
           else
             owned_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
@@ -227,7 +228,7 @@ module Lutaml
               if connector_role
                 member_end_attribute_name = connector_role.attributes["name"]&.value
               end
-              member_end_cardinality = { "min" => LOVER_VALUE_MAPPINGS[min], "max" => max }
+              member_end_cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
             end
           else
             member_end_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
@@ -287,7 +288,7 @@ module Lutaml
           return unless lower_value_node
 
           lower_value = lower_value_node.attributes["value"]&.value
-          LOVER_VALUE_MAPPINGS[lower_value]
+          LOWER_VALUE_MAPPINGS[lower_value]
         end
 
         def cardinality_max_value(node)
