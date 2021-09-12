@@ -212,7 +212,13 @@ module Lutaml
           return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
 
           xmi_id = link.attributes[link_member_name].value
-          member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
+          if link.attributes["start"].value == owner_xmi_id
+            xmi_id = link.attributes["end"].value
+            member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
+          else
+            xmi_id = link.attributes["start"].value
+            member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
+          end
 
           if link.name == "Association"
             connector_type = link_member_name == "start" ? "source" : "target"
