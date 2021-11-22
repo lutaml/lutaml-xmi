@@ -130,7 +130,7 @@ module Lutaml
           main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/links/*)).map do |link|
             link_member_name = link.attributes["start"].value == xmi_id ? "end" : "start"
             linke_owner_name = link_member_name == "start" ? "end" : "start"
-            member_end, member_end_type, member_end_cardinality, member_end_attribute_name = serialize_member_type(xmi_id, link, link_member_name)
+            member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, link, link_member_name)
             owner_end, owner_end_cardinality, owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
             if member_end && ((member_end_type != 'aggregation') || (member_end_type == 'aggregation' && member_end_attribute_name))
               doc_node_name = link_member_name == "start" ? "source" : "target"
@@ -142,7 +142,9 @@ module Lutaml
                 member_end_type: member_end_type,
                 member_end_cardinality: member_end_cardinality,
                 member_end_attribute_name: member_end_attribute_name,
+                member_end_xmi_id: member_end_xmi_id,
                 owner_end: owner_end,
+                owner_end_xmi_id: xmi_id,
                 definition: definition
               }
             end
@@ -245,7 +247,7 @@ module Lutaml
             end
           end
 
-          [member_end, "aggregation", member_end_cardinality, member_end_attribute_name]
+          [member_end, "aggregation", member_end_cardinality, member_end_attribute_name, xmi_id]
         end
 
         def generalization_association(owner_xmi_id, link)
@@ -265,7 +267,7 @@ module Lutaml
             member_end_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
           end
 
-          [member_end, member_end_type, member_end_cardinality, nil]
+          [member_end, member_end_type, member_end_cardinality, nil, xmi_id]
         end
 
         def class_element_metadata(klass)
@@ -281,6 +283,7 @@ module Lutaml
                 # xmi_id: klass['xmi:id'],
                 name: attribute["name"],
                 type: lookup_entity_name(type["xmi:idref"]) || type["xmi:idref"],
+                xmi_id: type["xmi:idref"],
                 is_derived: attribute["isDerived"],
                 cardinality: { "min" => cardinality_min_value(attribute), "max" => cardinality_max_value(attribute) },
                 definition: lookup_attribute_definition(attribute),
