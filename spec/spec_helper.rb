@@ -2,7 +2,6 @@
 
 require "bundler/setup"
 require "lutaml/xmi"
-require "byebug"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
