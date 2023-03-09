@@ -23,6 +23,8 @@ Gem::Specification.new do |spec|
   spec.bindir        = "exe"
   spec.require_paths = ["lib"]
 
+  spec.required_ruby_version = '>= 2.7.0'
+
   spec.add_runtime_dependency "hashie", "~> 4.1.0"
   spec.add_runtime_dependency "thor", "~> 1.0"
   spec.add_runtime_dependency "lutaml-uml"
