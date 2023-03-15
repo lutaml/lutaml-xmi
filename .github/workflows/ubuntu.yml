@@ -2,7 +2,8 @@ name: ubuntu
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - main
     tags:
       - '*'
   pull_request:
@@ -24,15 +25,12 @@ jobs:
           - ruby: '3.2'
             experimental: true
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
       - name: Use Ruby
-        uses: ruby/setup-ruby@master
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: Update gems
-        run: |
-          gem install bundler
-          bundle install --jobs 4 --retry 3
+          bundler-cache: true
       - name: Run specs
         run: |
           bundle exec rake

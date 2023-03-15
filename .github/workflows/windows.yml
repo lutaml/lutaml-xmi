@@ -2,7 +2,10 @@ name: windows
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - main
+    tags:
+      - '*'
   pull_request:
     paths-ignore:
       - .github/workflows/macos.yml
@@ -21,24 +24,13 @@ jobs:
         include:
           - ruby: '3.2'
             experimental: true
-        # Does not supported yet:
-        # Ruby (< 2.7.dev, >= 2.3), which is required by gem 'nokogiri (~> 1.10)', is not
-        #   available in the local ruby installation
-        # include:
-        #   - ruby: '2.7'
-        #     experimental: true
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
       - name: Use Ruby
-        uses: ruby/setup-ruby@v1.143.0
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: Update gems
-        shell: pwsh
-        run: |
-          gem install bundler
-          bundle config --local path vendor/bundle
-          bundle install --jobs 4 --retry 3
+          bundler-cache: true
       - name: Run specs
         run: |
           bundle exec rake

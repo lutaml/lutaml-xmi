@@ -2,7 +2,10 @@ name: macos
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - main
+    tags:
+      - '*'
   pull_request:
     paths-ignore:
       - .github/workflows/ubuntu.yml
@@ -22,15 +25,12 @@ jobs:
           - ruby: '3.2'
             experimental: true
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
       - name: Use Ruby
-        uses: actions/setup-ruby@v1
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: Update gems
-        run: |
-          sudo gem install bundler --force
-          bundle install --jobs 4 --retry 3
+          bundler-cache: true
       - name: Run specs
         run: |
           bundle exec rake
