@@ -13,39 +13,44 @@ module Lutaml
           "0" => "C",
           "1" => "M",
         }.freeze
-        attr_reader :main_model, :xmi_cache
+        attr_reader :main_model, :xmi_cache, :xmi_root_model
 
-        # @param [String] io - file object with path to .xmi file
-        #        [Hash] options - options for parsing
-        #
-        # @return [Lutaml::XMI::Model::Document]
-        def self.parse(io, _options = {})
-          new.parse(Nokogiri::XML(io.read))
+        # @param xml [String] path to xml
+        # @param options [Hash] options for parsing
+        # @return [Lutaml::Uml::Document]
+        def self.parse(xml, _options = {})
+          xml_content = File.read(xml).gsub("\t", "  ")
+          xmi_model = Xmi::Sparx::SparxRoot.from_xml(xml_content)
+          xmi_doc = Nokogiri::XML(File.open(xml).read)
+          new.parse(xmi_model, xmi_doc)
         end
 
-        def parse(xmi_doc)
+        def parse(xmi_model, xmi_doc)
           @xmi_cache = {}
+          @xmi_root_model = xmi_model
           @main_model = xmi_doc
           ::Lutaml::Uml::Document
-            .new(serialize_to_hash(xmi_doc))
+            .new(serialize_to_hash(xmi_model))
         end
 
         private
 
+        # @note xpath: //uml:Model[@xmi:type="uml:Model"]
         def serialize_to_hash(xmi_doc)
-          model = xmi_doc.xpath('//uml:Model[@xmi:type="uml:Model"]').first
+          model = xmi_doc.model
           {
-            name: model["name"],
+            name: model.name,
             packages: serialize_model_packages(model)
           }
         end
 
+        # @note xpath ./packagedElement[@xmi:type="uml:Package"]
         def serialize_model_packages(model)
-          model.xpath('./packagedElement[@xmi:type="uml:Package"]').map do |package|
+          model.packaged_element.map do |package|
             {
-              xmi_id: package["xmi:id"],
-              name: package["name"],
-              classes: serialize_model_classes(package),
+              xmi_id: package.id,
+              name: package.name,
+              classes: serialize_model_classes(package, model),
               enums: serialize_model_enums(package),
               data_types: serialize_model_data_types(package),
               diagrams: serialize_model_diagrams(package),
@@ -56,53 +61,52 @@ module Lutaml
           end
         end
 
-        def serialize_model_classes(model)
-          model.xpath('./packagedElement[@xmi:type="uml:Class" or @xmi:type="uml:AssociationClass"]').map do |klass|
-            {
-              xmi_id: klass["xmi:id"],
-              xmi_uuid: klass["xmi:uuid"],
-              name: klass["name"],
-              package: model,
-              attributes: serialize_class_attributes(klass),
-              associations: serialize_model_associations(klass),
-              operations: serialize_class_operations(klass),
-              constraints: serialize_class_constraints(klass),
-              is_abstract: doc_node_attribute_value(klass, "isAbstract"),
-              definition: doc_node_attribute_value(klass, "documentation"),
-              stereotype: doc_node_attribute_value(klass, "stereotype")
-            }
+        # @note xpath ./packagedElement[@xmi:type="uml:Class" or
+        #                               @xmi:type="uml:AssociationClass"]
+        def serialize_model_classes(package, model)
+          package.packaged_element.select { |e|
+            e.type == "uml:Class" || e.type == "uml:AssociationClass"
+          }.map do |klass|
+              {
+                xmi_id: klass.id,
+                # xmi_uuid: klass.uuid,
+                name: klass.name,
+                package: model,
+                attributes: serialize_class_attributes(klass),
+                associations: serialize_model_associations(klass),
+                operations: serialize_class_operations(klass),
+                constraints: serialize_class_constraints(klass),
+                is_abstract: doc_node_attribute_value(klass, "isAbstract"),
+                definition: doc_node_attribute_value(klass, "documentation"),
+                stereotype: doc_node_attribute_value(klass, "stereotype")
+              }
           end
         end
 
-        def serialize_model_enums(model)
-          model.xpath('./packagedElement[@xmi:type="uml:Enumeration"]').map do |enum|
-            attributes = enum
-              .xpath('.//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]')
-              .map do |value|
-                type = value.xpath(".//type").first || {}
-                {
-                  name: value["name"],
-                  type: lookup_entity_name(type["xmi:idref"]) || type["xmi:idref"],
-                  definition: lookup_attribute_definition(value),
-                }
+        # @note xpath ./packagedElement[@xmi:type="uml:Enumeration"]
+        def serialize_model_enums(package)
+          package.packaged_element
+            .select { |e| e.type == "uml:Enumeration" }.map do |enum|
+              # xpath .//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]
+              owned_literals = enum.owned_literal.map do |owned_literal|
+                owned_literal.to_hash.transform_keys(&:to_sym)
               end
             {
-              xmi_id: enum["xmi:id"],
-              xmi_uuid: enum["xmi:uuid"],
-              name: enum["name"],
-              values: attributes,
+              xmi_id: enum.id,
+              name: enum.name,
+              values: owned_literals,
               definition: doc_node_attribute_value(enum, "documentation"),
               stereotype: doc_node_attribute_value(enum, "stereotype"),
             }
           end
         end
 
+        # @note xpath ./packagedElement[@xmi:type="uml:DataType"]
         def serialize_model_data_types(model)
-          model.xpath('./packagedElement[@xmi:type="uml:DataType"]').map do |klass|
+          select_all_packaged_elements(model, "uml:DataType").map do |klass|
             {
-              xmi_id: klass["xmi:id"],
-              xmi_uuid: klass["xmi:uuid"],
-              name: klass["name"],
+              xmi_id: klass.id,
+              name: klass.name,
               attributes: serialize_class_attributes(klass),
               operations: serialize_class_operations(klass),
               associations: serialize_model_associations(klass),
@@ -126,41 +130,59 @@ module Lutaml
           end
         end
 
+        # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/links/*)
         def serialize_model_associations(klass)
-          xmi_id = klass["xmi:id"]
-          main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/links/*)).map do |link|
-            link_member_name = link.attributes["start"].value == xmi_id ? "end" : "start"
-            linke_owner_name = link_member_name == "start" ? "end" : "start"
-            member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, link, link_member_name)
-            owner_end, owner_end_cardinality, owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
-            if member_end && ((member_end_type != 'aggregation') || (member_end_type == 'aggregation' && member_end_attribute_name))
-              doc_node_name = link_member_name == "start" ? "source" : "target"
-              definition_node = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/#{doc_node_name}/documentation)).first
-              definition = definition_node.attributes['value']&.value if definition_node
-              {
-                xmi_id: link["xmi:id"],
-                member_end: member_end,
-                member_end_type: member_end_type,
-                member_end_cardinality: member_end_cardinality,
-                member_end_attribute_name: member_end_attribute_name,
-                member_end_xmi_id: member_end_xmi_id,
-                owner_end: owner_end,
-                owner_end_xmi_id: xmi_id,
-                definition: definition
-              }
-            end
-          end.uniq
+          xmi_id = klass.id
+          matched_element = xmi_root_model.extension.elements.element
+            .select { |e| e.idref == xmi_id }.first
+
+          matched_element.links.map do |link|
+            link.associations.map do |assoc|
+              link_member_name = assoc.start == xmi_id ? "end" : "start"
+              linke_owner_name = link_member_name == "start" ? "end" : "start"
+              member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, link, link_member_name)
+              owner_end, owner_end_cardinality, owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
+
+              if member_end && ((member_end_type != 'aggregation') ||
+                (member_end_type == 'aggregation' && member_end_attribute_name))
+
+                doc_node_name = (link_member_name == "start" ?
+                  "source" : "target")
+                definition = fetch_definition_node_value(link.id, doc_node_name)
+                {
+                  xmi_id: link.id,
+                  member_end: member_end,
+                  member_end_type: member_end_type,
+                  member_end_cardinality: member_end_cardinality,
+                  member_end_attribute_name: member_end_attribute_name,
+                  member_end_xmi_id: member_end_xmi_id,
+                  owner_end: owner_end,
+                  owner_end_xmi_id: xmi_id,
+                  definition: definition
+                }
+              end
+            end.uniq
+          end
         end
 
+        def fetch_definition_node_value(link_id, doc_node_name)
+          definition_node = main_model
+            .xpath(%(//connector[@xmi:idref="#{link.id}"]/#{doc_node_name}/documentation)).first
+
+          definition_node.attributes['value']&.value if definition_node
+        end
+
+        # @note xpath .//ownedOperation
         def serialize_class_operations(klass)
-          klass.xpath('.//ownedOperation').map do |attribute|
-            type = attribute.xpath(".//type").first || {}
-            if attribute.attributes["association"].nil?
+          klass.owned_operation.map do |operation|
+            uml_type = operation.uml_type.first || {}
+
+            if operation.association.nil?
               {
-                # TODO: xmi_id
-                # xmi_id: klass['xmi:id'],
-                name: attribute["name"],
-                definition: lookup_attribute_definition(attribute),
+                id: operation.id,
+                xmi_id: uml_type.idref,
+                name: operation.name,
+                definition: lookup_attribute_documentation(operation.id),
               }
             end
           end.compact
@@ -180,31 +202,15 @@ module Lutaml
           return if link.name == 'NoteLink'
           return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
 
-          xmi_id = link.attributes[linke_owner_name].value
+          xmi_id = link.send(linke_owner_name.to_sym)
           owner_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
 
           if link.name == "Association"
-            assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/source)).first
-            if assoc_connector
-              connector_type = assoc_connector.children.find { |node| node.name == 'type' }
-              if connector_type && connector_type.attributes['multiplicity']
-                cardinality = connector_type.attributes['multiplicity']&.value&.split('..')
-                cardinality.unshift('1') if cardinality.length == 1
-                min, max = cardinality
-              end
-              connector_role = assoc_connector.children.find { |node| node.name == 'role' }
-              if connector_role
-                owned_attribute_name = connector_role.attributes["name"]&.value
-              end
-              owned_cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
-            end
+            owned_cardinality, owned_attribute_name =
+              fetch_connector(link.id, "source")
           else
-            owned_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
-            if owned_node
-              assoc = owned_node.parent
-              owned_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
-              owned_attribute_name = assoc.attributes["name"]&.value
-            end
+            owned_cardinality, owned_attribute_name =
+              fetch_owned_attribute_node(xmi_id)
           end
 
           [owner_end, owned_cardinality, owned_attribute_name]
@@ -214,110 +220,145 @@ module Lutaml
           return if link.name == 'NoteLink'
           return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
 
-          xmi_id = link.attributes[link_member_name].value
-          if link.attributes["start"].value == owner_xmi_id
-            xmi_id = link.attributes["end"].value
+          xmi_id = link.send(link_member_name.to_sym)
+          if link.start == owner_xmi_id
+            xmi_id = link.end
             member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
           else
-            xmi_id = link.attributes["start"].value
+            xmi_id = link.start
             member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
           end
 
           if link.name == "Association"
             connector_type = link_member_name == "start" ? "source" : "target"
-            assoc_connector = main_model.xpath(%(//connector[@xmi:idref="#{link['xmi:id']}"]/#{connector_type})).first
-            if assoc_connector
-              connector_type = assoc_connector.children.find { |node| node.name == 'type' }
-              if connector_type && connector_type.attributes['multiplicity']
-                cardinality = connector_type.attributes['multiplicity']&.value&.split('..')
-                cardinality.unshift('1') if cardinality.length == 1
-                min, max = cardinality
-              end
-              connector_role = assoc_connector.children.find { |node| node.name == 'role' }
-              if connector_role
-                member_end_attribute_name = connector_role.attributes["name"]&.value
-              end
-              member_end_cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
-            end
+            member_end_cardinality, member_end_attribute_name =
+              fetch_connector(link.id, connector_type)
           else
-            member_end_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
-            if member_end_node
-              assoc = member_end_node.parent
-              member_end_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
-              member_end_attribute_name = assoc.attributes["name"]&.value
-            end
+            member_end_cardinality, member_end_attribute_name =
+              fetch_owned_attribute_node(xmi_id)
           end
 
-          [member_end, "aggregation", member_end_cardinality, member_end_attribute_name, xmi_id]
+          [member_end, "aggregation", member_end_cardinality,
+            member_end_attribute_name, xmi_id]
+        end
+
+        # @note xpath %(//connector[@xmi:idref="#{link_id}"]/#{connector_type})
+        def fetch_connector(link_id, connector_type)
+          assoc_connector = main_model
+            .xpath(%(//connector[@xmi:idref="#{link_id}"]/#{connector_type}))
+            .first
+
+          if assoc_connector
+            connector_type = assoc_connector.children
+              .find { |node| node.name == 'type' }
+            if connector_type && connector_type.attributes['multiplicity']
+              cardinality = connector_type
+                .attributes['multiplicity']&.value&.split('..')
+              cardinality.unshift('1') if cardinality.length == 1
+              min, max = cardinality
+            end
+            connector_role = assoc_connector.children
+              .find { |node| node.name == 'role' }
+            if connector_role
+              attribute_name = connector_role.attributes["name"]&.value
+            end
+            cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
+          end
+
+          return cardinality, attribute_name
         end
 
         def generalization_association(owner_xmi_id, link)
-          if link.attributes["start"].value == owner_xmi_id
-            xmi_id = link.attributes["end"].value
+          if link.start == owner_xmi_id
+            xmi_id = link.end
             member_end_type = "inheritance"
-            member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
+            member_end = lookup_entity_name(xmi_id) ||
+              connector_target_name(xmi_id)
           else
-            xmi_id = link.attributes["start"].value
+            xmi_id = link.start
             member_end_type = "generalization"
-            member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
+            member_end = lookup_entity_name(xmi_id) ||
+              connector_source_name(xmi_id)
           end
 
-          member_end_node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
-          if member_end_node
-            assoc = member_end_node.parent
-            member_end_cardinality = { "min" => cardinality_min_value(assoc), "max" => cardinality_max_value(assoc) }
-          end
+          member_end_cardinality, member_end_attribute_name =
+            fetch_owned_attribute_node(xmi_id)
 
           [member_end, member_end_type, member_end_cardinality, nil, xmi_id]
+        end
+
+        # @note xpath
+        #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
+        def fetch_owned_attribute_node(xmi_id)
+          node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
+          if node
+            assoc = node.parent
+
+            upper_value_node = assoc.xpath(".//upperValue").first
+            upper_value = upper_value_node.nil? ? nil : upper_value_node.attributes["value"]&.value
+
+            lower_value_node = assoc.xpath(".//lowerValue").first
+            lower_value = lower_value_node.nil? ? nil : lower_value_node.attributes["value"]&.value
+
+            cardinality = {
+              "min" => cardinality_min_value(lower_value),
+              "max" => cardinality_max_value(upper_value)
+            }
+
+            assoc_name = assoc.attributes["name"]&.value
+          end
+
+          return cardinality, assoc_name
         end
 
         def class_element_metadata(klass)
           main_model.xpath(%(//element[@xmi:idref="#{klass['xmi:id']}"]))
         end
 
+        # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
         def serialize_class_attributes(klass)
-          klass.xpath('.//ownedAttribute[@xmi:type="uml:Property"]').map do |attribute|
-            type = attribute.xpath(".//type").first || {}
-            if attribute.attributes["association"].nil?
-              {
-                # TODO: xmi_id
-                # xmi_id: klass['xmi:id'],
-                name: attribute["name"],
-                type: lookup_entity_name(type["xmi:idref"]) || type["xmi:idref"],
-                xmi_id: type["xmi:idref"],
-                is_derived: attribute["isDerived"],
-                cardinality: { "min" => cardinality_min_value(attribute), "max" => cardinality_max_value(attribute) },
-                definition: lookup_attribute_definition(attribute),
-              }
-            end
+          klass.owned_attribute.select { |attr| attr.type == "uml:Property" }
+            .map do |attribute|
+              uml_type = attribute.uml_type.first || {}
+
+              if attribute.association.nil?
+                {
+                  id: attribute.id,
+                  name: attribute.name,
+                  type: lookup_entity_name(uml_type.idref) || uml_type.idref,
+                  xmi_id: uml_type.idref,
+                  is_derived: attribute.is_derived,
+                  cardinality: {
+                    "min" => cardinality_min_value(attribute.lowerValue.value),
+                    "max" => cardinality_max_value(attribute.upperValue.value)
+                  },
+                  definition: lookup_attribute_documentation(attribute.id),
+                }
+              end
           end.compact
         end
 
-        def cardinality_min_value(node)
-          lower_value_node = node.xpath(".//lowerValue").first
-          return unless lower_value_node
+        def cardinality_min_value(value)
+          return unless value
 
-          lower_value = lower_value_node.attributes["value"]&.value
-          LOWER_VALUE_MAPPINGS[lower_value]
+          LOWER_VALUE_MAPPINGS[value]
         end
 
-        def cardinality_max_value(node)
-          upper_value_node = node.xpath(".//upperValue").first
-          return unless upper_value_node
+        def cardinality_max_value(value)
+          return unless value
 
-          upper_value_node.attributes["value"]&.value
+          value
         end
 
         def doc_node_attribute_value(node, attr_name)
-          xmi_id = node["xmi:id"]
+          xmi_id = node.id
           doc_node = main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/properties)).first
           return unless doc_node
 
           doc_node.attributes[attr_name]&.value
         end
 
-        def lookup_attribute_definition(node)
-          xmi_id = node["xmi:id"]
+        def lookup_attribute_documentation(xmi_id)
           doc_node = main_model.xpath(%(//attribute[@xmi:idref="#{xmi_id}"]/documentation)).first
           return unless doc_node
 
@@ -348,6 +389,35 @@ module Lutaml
           return unless node
 
           node.attributes["name"]&.value
+        end
+
+        # @param type
+        # @return [Array]
+        # @note xpath ./packagedElement[@xmi:type="#{type}"]
+        def select_all_packaged_elements(model, type)
+          selected_elements = []
+          iterate_tree(selected_elements, model, type, :packaged_element)
+          selected_elements
+        end
+
+        # @param result [Array]
+        # @param node [Object]
+        # @param type [String]
+        # @param children_method [String] method to determine children exist
+        def iterate_tree(result, node, type, children_method)
+          if node.type == type
+            result << node
+          end
+
+          return unless node.send(children_method.to_sym)
+
+          node.send(children_method.to_sym).each do |sub_node|
+            if sub_node.send(children_method.to_sym)
+              iterate_tree(result, sub_node, type, children_method)
+            elsif sub_node.type == type
+              result << sub_node
+            end
+          end
         end
       end
     end
