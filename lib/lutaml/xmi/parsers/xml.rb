@@ -2,6 +2,7 @@ require "nokogiri"
 require "htmlentities"
 require "lutaml/uml/has_attributes"
 require "lutaml/uml/document"
+require "lutaml/xmi"
 
 module Lutaml
   module XMI
