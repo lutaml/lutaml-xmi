@@ -19,7 +19,7 @@ module Lutaml
         # @param options [Hash] options for parsing
         # @return [Lutaml::Uml::Document]
         def self.parse(xml, _options = {})
-          xml_content = File.read(xml).gsub("\t", "  ")
+          xml_content = File.read(xml)
           xmi_model = Xmi::Sparx::SparxRoot.from_xml(xml_content)
           xmi_doc = Nokogiri::XML(File.open(xml).read)
           new.parse(xmi_model, xmi_doc)
