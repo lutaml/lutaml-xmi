@@ -65,7 +65,7 @@ module Lutaml
         #                               @xmi:type="uml:AssociationClass"]
         def serialize_model_classes(package, model)
           package.packaged_element.select { |e|
-            e.type == "uml:Class" || e.type == "uml:AssociationClass"
+            e.is_type?("uml:Class") || e.is_type?("uml:AssociationClass")
           }.map do |klass|
               {
                 xmi_id: klass.id,
@@ -86,7 +86,7 @@ module Lutaml
         # @note xpath ./packagedElement[@xmi:type="uml:Enumeration"]
         def serialize_model_enums(package)
           package.packaged_element
-            .select { |e| e.type == "uml:Enumeration" }.map do |enum|
+            .select { |e| e.is_type?("uml:Enumeration") }.map do |enum|
               # xpath .//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]
               owned_literals = enum.owned_literal.map do |owned_literal|
                 owned_literal.to_hash.transform_keys(&:to_sym)
@@ -317,7 +317,7 @@ module Lutaml
 
         # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
         def serialize_class_attributes(klass)
-          klass.owned_attribute.select { |attr| attr.type == "uml:Property" }
+          klass.owned_attribute.select { |attr| attr.is_type?("uml:Property") }
             .map do |attribute|
               uml_type = attribute.uml_type.first || {}
 
