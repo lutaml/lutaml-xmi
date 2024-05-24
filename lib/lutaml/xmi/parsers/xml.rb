@@ -118,14 +118,17 @@ module Lutaml
           end
         end
 
+        # @note xpath %(//diagrams/diagram/model[@package="#{node['xmi:id']}"])
         def serialize_model_diagrams(node)
-          main_model.xpath(%(//diagrams/diagram/model[@package="#{node['xmi:id']}"])).map do |diagram_model|
-            diagram = diagram_model.parent
-            properties = diagram.children.find {|n| n.name == 'properties' }
+          diagrams = xmi_root_model.extension.diagrams.diagram.select do |d|
+            d.model.package == node.id
+          end
+
+          diagrams.map do |diagram|
             {
-              xmi_id: diagram["xmi:id"],
-              name: properties["name"],
-              definition: properties.attributes['documentation']&.value
+              xmi_id: diagram.id,
+              name: diagram.properties.name,
+              definition: diagram.properties.name.documentation
             }
           end
         end
@@ -165,11 +168,21 @@ module Lutaml
           end
         end
 
-        def fetch_definition_node_value(link_id, doc_node_name)
-          definition_node = main_model
-            .xpath(%(//connector[@xmi:idref="#{link.id}"]/#{doc_node_name}/documentation)).first
+        # @param link_id [String]
+        # @note xpath %(//connector[@xmi:idref="#{link_id}"])
+        def fetch_connector(link_id)
+          xmi_root_model.extension.connectors.connector.select do |con|
+              con.idref == link_id
+          end.first
+        end
 
-          definition_node.attributes['value']&.value if definition_node
+        # @param link_id [String]
+        # @param node_name [String] source or target
+        # @note xpath
+        #   %(//connector[@xmi:idref="#{link_id}"]/#{node_name}/documentation)
+        def fetch_definition_node_value(link_id, node_name)
+          connector_node = fetch_connector(link_id)
+          connector_node.send(node_name.to_sym).documentation
         end
 
         # @note xpath .//ownedOperation
@@ -188,12 +201,22 @@ module Lutaml
           end.compact
         end
 
+        # In ea-xmi-2.5.1, constraints are moved to source/target
+        # under connectors?
+        # @note xpath ./constraints/constraint
         def serialize_class_constraints(klass)
-          class_element_metadata(klass).xpath("./constraints/constraint").map do |constraint|
+          connector_node = fetch_connector(klassid)
+
+          constraints = [:source, :target].map do |st|
+            connector_node.send(st).constraints.constraint
+          end.flatten
+
+          constraints.map do |constraint|
             {
-              xmi_id: constraint["xmi:id"],
-              body: constraint["name"],
-              definition: HTMLEntities.new.decode(constraint["description"])
+              name: HTMLEntities.new.decode(constraint.name),
+              type: constraint.type,
+              weight: constraint.weight,
+              status: constraint.status,
             }
           end
         end
@@ -207,7 +230,7 @@ module Lutaml
 
           if link.name == "Association"
             owned_cardinality, owned_attribute_name =
-              fetch_connector(link.id, "source")
+              fetch_assoc_connector(link.id, "source")
           else
             owned_cardinality, owned_attribute_name =
               fetch_owned_attribute_node(xmi_id)
@@ -232,7 +255,7 @@ module Lutaml
           if link.name == "Association"
             connector_type = link_member_name == "start" ? "source" : "target"
             member_end_cardinality, member_end_attribute_name =
-              fetch_connector(link.id, connector_type)
+              fetch_assoc_connector(link.id, connector_type)
           else
             member_end_cardinality, member_end_attribute_name =
               fetch_owned_attribute_node(xmi_id)
@@ -243,24 +266,19 @@ module Lutaml
         end
 
         # @note xpath %(//connector[@xmi:idref="#{link_id}"]/#{connector_type})
-        def fetch_connector(link_id, connector_type)
-          assoc_connector = main_model
-            .xpath(%(//connector[@xmi:idref="#{link_id}"]/#{connector_type}))
-            .first
+        def fetch_assoc_connector(link_id, connector_type)
+          assoc_connector = fetch_connector(link_id).send(:connector_type)
 
           if assoc_connector
-            connector_type = assoc_connector.children
-              .find { |node| node.name == 'type' }
-            if connector_type && connector_type.attributes['multiplicity']
-              cardinality = connector_type
-                .attributes['multiplicity']&.value&.split('..')
+            connector_type = assoc_connector.type
+            if connector_type && connector_type.multiplicity
+              cardinality = connector_type.multiplicity.split('..')
               cardinality.unshift('1') if cardinality.length == 1
               min, max = cardinality
             end
-            connector_role = assoc_connector.children
-              .find { |node| node.name == 'role' }
+            connector_role = assoc_connector.role
             if connector_role
-              attribute_name = connector_role.attributes["name"]&.value
+              attribute_name = connector_role.name
             end
             cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
           end
@@ -289,30 +307,35 @@ module Lutaml
 
         # @note xpath
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
+        #   multiple items if search type idref
+        #   should search association?
         def fetch_owned_attribute_node(xmi_id)
-          node = main_model.xpath(%(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])).first
-          if node
-            assoc = node.parent
+          all_elements = select_all_packaged_elements(xmi_root_model, nil)
+          owned_attributes = all_elements.map { |e| e.owned_attribute }.flatten
+          assoc = owned_attributes.select do |a|
+            a.association == smi_id
+          end.first
 
-            upper_value_node = assoc.xpath(".//upperValue").first
-            upper_value = upper_value_node.nil? ? nil : upper_value_node.attributes["value"]&.value
-
-            lower_value_node = assoc.xpath(".//lowerValue").first
-            lower_value = lower_value_node.nil? ? nil : lower_value_node.attributes["value"]&.value
+          if assoc
+            upper_value = assoc.upper_value
+            lower_value = assoc.lower_value
 
             cardinality = {
               "min" => cardinality_min_value(lower_value),
               "max" => cardinality_max_value(upper_value)
             }
 
-            assoc_name = assoc.attributes["name"]&.value
+            assoc_name = assoc.name
           end
 
           return cardinality, assoc_name
         end
 
-        def class_element_metadata(klass)
-          main_model.xpath(%(//element[@xmi:idref="#{klass['xmi:id']}"]))
+        # @note xpath %(//element[@xmi:idref="#{klass['xmi:id']}"])
+        def fetch_element(klass)
+          xmi_root_model.extension.elements.element.select do |e|
+            e.idref == klass.id
+          end.first
         end
 
         # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
@@ -350,19 +373,20 @@ module Lutaml
           value
         end
 
+        # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/properties)
         def doc_node_attribute_value(node, attr_name)
-          xmi_id = node.id
-          doc_node = main_model.xpath(%(//element[@xmi:idref="#{xmi_id}"]/properties)).first
+          doc_node = fetch_element(node.id)
           return unless doc_node
 
-          doc_node.attributes[attr_name]&.value
+          doc_node.properties.send(attr_name.to_sym)
         end
 
+        # @note xpath %(//attribute[@xmi:idref="#{xmi_id}"]/documentation)
         def lookup_attribute_documentation(xmi_id)
-          doc_node = main_model.xpath(%(//attribute[@xmi:idref="#{xmi_id}"]/documentation)).first
+          doc_node = fetch_element(node.id)
           return unless doc_node
 
-          doc_node.attributes["value"]&.value
+          doc_node.documentation
         end
 
         def lookup_entity_name(xmi_id)
@@ -370,18 +394,23 @@ module Lutaml
           xmi_cache[xmi_id]
         end
 
-        def connector_source_name(xmi_id)
-          node = main_model.xpath(%(//source[@xmi:idref="#{xmi_id}"]/model)).first
-          return unless node
+        def connector_name_by_source_or_target(xmi_id, source_or_target)
+          node = xmi_root_model.extension.connectors.connector.select do |con|
+            con.send(source_or_target.to_sym).idref == xmi_id
+          end
+          return if node.empty?
 
-          node.attributes["name"]&.value
+          node.first.name
         end
 
-        def connector_target_name(xmi_id)
-          node = main_model.xpath(%(//target[@xmi:idref="#{xmi_id}"]/model)).first
-          return unless node
+        # @note xpath %(//source[@xmi:idref="#{xmi_id}"]/model)
+        def connector_source_name(xmi_id)
+          connector_name_by_source_or_target(xmi_id, :source)
+        end
 
-          node.attributes["name"]&.value
+        # @note xpath %(//target[@xmi:idref="#{xmi_id}"]/model)
+        def connector_target_name(xmi_id)
+          connector_name_by_source_or_target(xmi_id, :target)
         end
 
         def model_node_name_by_xmi_id(xmi_id)
@@ -391,30 +420,35 @@ module Lutaml
           node.attributes["name"]&.value
         end
 
-        # @param type
+        # @param model
+        # @param type [String] nil for any
+        # @return [Array]
+        def select_all_items(model, type, method)
+          items = []
+          iterate_tree(items, model, type, method.to_sym)
+          items
+        end
+
+        # @param model
+        # @param type [String] nil for any
         # @return [Array]
         # @note xpath ./packagedElement[@xmi:type="#{type}"]
         def select_all_packaged_elements(model, type)
-          selected_elements = []
-          iterate_tree(selected_elements, model, type, :packaged_element)
-          selected_elements
+          select_all_items(model, type, :packaged_element)
         end
 
         # @param result [Array]
         # @param node [Object]
-        # @param type [String]
+        # @param type [String] nil for any
         # @param children_method [String] method to determine children exist
         def iterate_tree(result, node, type, children_method)
-          if node.type == type
-            result << node
-          end
-
+          result << node if type.nil? || node.type == type
           return unless node.send(children_method.to_sym)
 
           node.send(children_method.to_sym).each do |sub_node|
             if sub_node.send(children_method.to_sym)
               iterate_tree(result, sub_node, type, children_method)
-            elsif sub_node.type == type
+            elsif type.nil? || sub_node.type == type
               result << sub_node
             end
           end
