@@ -3,6 +3,7 @@ require "htmlentities"
 require "lutaml/uml/has_attributes"
 require "lutaml/uml/document"
 require "lutaml/xmi"
+require "xmi"
 
 module Lutaml
   module XMI
@@ -13,7 +14,7 @@ module Lutaml
           "0" => "C",
           "1" => "M",
         }.freeze
-        attr_reader :main_model, :xmi_cache, :xmi_root_model
+        attr_reader :xmi_cache, :xmi_root_model
 
         # @param xml [String] path to xml
         # @param options [Hash] options for parsing
@@ -21,23 +22,24 @@ module Lutaml
         def self.parse(xml, _options = {})
           xml_content = File.read(xml)
           xmi_model = Xmi::Sparx::SparxRoot.from_xml(xml_content)
-          xmi_doc = Nokogiri::XML(File.open(xml).read)
-          new.parse(xmi_model, xmi_doc)
+          new.parse(xmi_model)
         end
 
-        def parse(xmi_model, xmi_doc)
+        # @param xmi_model [Shale::Mapper]
+        # @return [Lutaml::Uml::Document]
+        def parse(xmi_model)
           @xmi_cache = {}
           @xmi_root_model = xmi_model
-          @main_model = xmi_doc
-          ::Lutaml::Uml::Document
-            .new(serialize_to_hash(xmi_model))
+          ::Lutaml::Uml::Document.new(serialize_to_hash(xmi_model))
         end
 
         private
 
+        # @param xmi_model [Shale::Mapper]
+        # @return [Hash]
         # @note xpath: //uml:Model[@xmi:type="uml:Model"]
-        def serialize_to_hash(xmi_doc)
-          model = xmi_doc.model
+        def serialize_to_hash(xmi_model)
+          model = xmi_model.model
           {
             name: model.name,
             packages: serialize_model_packages(model)
