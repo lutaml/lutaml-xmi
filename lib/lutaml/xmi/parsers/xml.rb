@@ -413,11 +413,14 @@ module Lutaml
           connector_name_by_source_or_target(xmi_id, :target)
         end
 
+        # @param xmi_id [String]
+        # @return [String]
+        # @note xpath %(//*[@xmi:id="#{xmi_id}"])
         def model_node_name_by_xmi_id(xmi_id)
-          node = main_model.xpath(%(//*[@xmi:id="#{xmi_id}"])).first
-          return unless node
-
-          node.attributes["name"]&.value
+          id_name_mapping = Hash.new
+          map_id_name(id_name_mapping, xmi_root_model)
+          xmi_cache = id_name_mapping
+          xmi_cache[xmi_id]
         end
 
         # @param model
@@ -450,6 +453,30 @@ module Lutaml
               iterate_tree(result, sub_node, type, children_method)
             elsif type.nil? || sub_node.type == type
               result << sub_node
+            end
+          end
+        end
+
+        # @param result [Hash]
+        # @param node [Shale::Mapper]
+        # @note set id as key and name as value into result
+        #       if id and name are found
+        def map_id_name(result, node)
+          return if node.nil?
+
+          if node.is_a?(Array)
+            node.each do |arr_item|
+              map_id_name(result, arr_item)
+            end
+          elsif node.class.methods.include?(:attributes)
+            attrs = node.class.attributes
+
+            if attrs.has_key?(:id) && attrs.has_key?(:name)
+              result[node.id] = node.name
+            end
+
+            attrs.each_pair do |k, v|
+              map_id_name(result, node.send(k))
             end
           end
         end
