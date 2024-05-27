@@ -46,6 +46,8 @@ module Lutaml
           }
         end
 
+        # @param model [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath ./packagedElement[@xmi:type="uml:Package"]
         def serialize_model_packages(model)
           model.packaged_element.map do |package|
@@ -55,14 +57,17 @@ module Lutaml
               classes: serialize_model_classes(package, model),
               enums: serialize_model_enums(package),
               data_types: serialize_model_data_types(package),
-              diagrams: serialize_model_diagrams(package),
+              diagrams: serialize_model_diagrams(package.id),
               packages: serialize_model_packages(package),
-              definition: doc_node_attribute_value(package, "documentation"),
-              stereotype: doc_node_attribute_value(package, "stereotype")
+              definition: doc_node_attribute_value(package.id, "documentation"),
+              stereotype: doc_node_attribute_value(package.id, "stereotype")
             }
           end
         end
 
+        # @param package [Shale::Mapper]
+        # @param model [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath ./packagedElement[@xmi:type="uml:Class" or
         #                               @xmi:type="uml:AssociationClass"]
         def serialize_model_classes(package, model)
@@ -71,20 +76,21 @@ module Lutaml
           }.map do |klass|
               {
                 xmi_id: klass.id,
-                # xmi_uuid: klass.uuid,
                 name: klass.name,
                 package: model,
                 attributes: serialize_class_attributes(klass),
-                associations: serialize_model_associations(klass),
+                associations: serialize_model_associations(klass.id),
                 operations: serialize_class_operations(klass),
-                constraints: serialize_class_constraints(klass),
-                is_abstract: doc_node_attribute_value(klass, "isAbstract"),
-                definition: doc_node_attribute_value(klass, "documentation"),
-                stereotype: doc_node_attribute_value(klass, "stereotype")
+                constraints: serialize_class_constraints(klass.id),
+                is_abstract: doc_node_attribute_value(klass.id, "isAbstract"),
+                definition: doc_node_attribute_value(klass.id, "documentation"),
+                stereotype: doc_node_attribute_value(klass.id, "stereotype")
               }
           end
         end
 
+        # @param package [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath ./packagedElement[@xmi:type="uml:Enumeration"]
         def serialize_model_enums(package)
           package.packaged_element
@@ -93,16 +99,19 @@ module Lutaml
               owned_literals = enum.owned_literal.map do |owned_literal|
                 owned_literal.to_hash.transform_keys(&:to_sym)
               end
+
             {
               xmi_id: enum.id,
               name: enum.name,
               values: owned_literals,
-              definition: doc_node_attribute_value(enum, "documentation"),
-              stereotype: doc_node_attribute_value(enum, "stereotype"),
+              definition: doc_node_attribute_value(enum.id, "documentation"),
+              stereotype: doc_node_attribute_value(enum.id, "stereotype"),
             }
           end
         end
 
+        # @param model [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath ./packagedElement[@xmi:type="uml:DataType"]
         def serialize_model_data_types(model)
           select_all_packaged_elements(model, "uml:DataType").map do |klass|
@@ -111,19 +120,21 @@ module Lutaml
               name: klass.name,
               attributes: serialize_class_attributes(klass),
               operations: serialize_class_operations(klass),
-              associations: serialize_model_associations(klass),
-              constraints: serialize_class_constraints(klass),
-              is_abstract: doc_node_attribute_value(klass, "isAbstract"),
-              definition: doc_node_attribute_value(klass, "documentation"),
-              stereotype: doc_node_attribute_value(klass, "stereotype"),
+              associations: serialize_model_associations(klass.id),
+              constraints: serialize_class_constraints(klass.id),
+              is_abstract: doc_node_attribute_value(klass.id, "isAbstract"),
+              definition: doc_node_attribute_value(klass.id, "documentation"),
+              stereotype: doc_node_attribute_value(klass.id, "stereotype"),
             }
           end
         end
 
+        # @param node_id [String]
+        # @return [Array<Hash>]
         # @note xpath %(//diagrams/diagram/model[@package="#{node['xmi:id']}"])
-        def serialize_model_diagrams(node)
+        def serialize_model_diagrams(node_id)
           diagrams = xmi_root_model.extension.diagrams.diagram.select do |d|
-            d.model.package == node.id
+            d.model.package == node_id
           end
 
           diagrams.map do |diagram|
@@ -135,9 +146,10 @@ module Lutaml
           end
         end
 
+        # @param xmi_id [String]
+        # @return [Array<Hash>]
         # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/links/*)
-        def serialize_model_associations(klass)
-          xmi_id = klass.id
+        def serialize_model_associations(xmi_id)
           matched_element = xmi_root_model.extension.elements.element
             .select { |e| e.idref == xmi_id }.first
 
@@ -146,7 +158,7 @@ module Lutaml
               link_member_name = assoc.start == xmi_id ? "end" : "start"
               linke_owner_name = link_member_name == "start" ? "end" : "start"
               member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, link, link_member_name)
-              owner_end, owner_end_cardinality, owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
+              owner_end, _owner_end_cardinality, _owner_end_attribute_name = serialize_owned_type(xmi_id, link, linke_owner_name)
 
               if member_end && ((member_end_type != 'aggregation') ||
                 (member_end_type == 'aggregation' && member_end_attribute_name))
@@ -171,15 +183,17 @@ module Lutaml
         end
 
         # @param link_id [String]
+        # @return [Shale::Mapper]
         # @note xpath %(//connector[@xmi:idref="#{link_id}"])
         def fetch_connector(link_id)
           xmi_root_model.extension.connectors.connector.select do |con|
-              con.idref == link_id
+            con.idref == link_id
           end.first
         end
 
         # @param link_id [String]
         # @param node_name [String] source or target
+        # @return [String]
         # @note xpath
         #   %(//connector[@xmi:idref="#{link_id}"]/#{node_name}/documentation)
         def fetch_definition_node_value(link_id, node_name)
@@ -187,15 +201,18 @@ module Lutaml
           connector_node.send(node_name.to_sym).documentation
         end
 
+        # @param klass [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath .//ownedOperation
         def serialize_class_operations(klass)
           klass.owned_operation.map do |operation|
-            uml_type = operation.uml_type.first || {}
+            uml_type = operation.uml_type.first
+            uml_type_idref = uml_type.id_ref if uml_type
 
             if operation.association.nil?
               {
                 id: operation.id,
-                xmi_id: uml_type.idref,
+                xmi_id: uml_type_idref,
                 name: operation.name,
                 definition: lookup_attribute_documentation(operation.id),
               }
@@ -205,9 +222,11 @@ module Lutaml
 
         # In ea-xmi-2.5.1, constraints are moved to source/target
         # under connectors?
+        # @param klass_id [String]
+        # @return [Array<Hash>]
         # @note xpath ./constraints/constraint
-        def serialize_class_constraints(klass)
-          connector_node = fetch_connector(klassid)
+        def serialize_class_constraints(klass_id)
+          connector_node = fetch_connector(klass_id)
 
           constraints = [:source, :target].map do |st|
             connector_node.send(st).constraints.constraint
@@ -223,12 +242,21 @@ module Lutaml
           end
         end
 
+        # @param owner_xmi_id [String]
+        # @param link [Shale::Mapper]
+        # @param link_member_name [String]
+        # @return [Array<String, Hash, String>]
         def serialize_owned_type(owner_xmi_id, link, linke_owner_name)
-          return if link.name == 'NoteLink'
-          return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
+          case link.name
+          when "NoteLink"
+            return
+          when "Generalization"
+            return generalization_association(owner_xmi_id, link)
+          end
 
           xmi_id = link.send(linke_owner_name.to_sym)
-          owner_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
+          owner_end = lookup_entity_name(xmi_id) ||
+            connector_source_name(xmi_id)
 
           if link.name == "Association"
             owned_cardinality, owned_attribute_name =
@@ -241,17 +269,28 @@ module Lutaml
           [owner_end, owned_cardinality, owned_attribute_name]
         end
 
+        # @param owner_xmi_id [String]
+        # @param link [Shale::Mapper]
+        # @param link_member_name [String]
+        # @return [Array<String, String, Hash, String, String>]
         def serialize_member_type(owner_xmi_id, link, link_member_name)
-          return if link.name == 'NoteLink'
-          return generalization_association(owner_xmi_id, link) if link.name == "Generalization"
+          case link.name
+          when "NoteLink"
+            return
+          when "Generalization"
+            return generalization_association(owner_xmi_id, link)
+          end
 
           xmi_id = link.send(link_member_name.to_sym)
+
           if link.start == owner_xmi_id
             xmi_id = link.end
-            member_end = lookup_entity_name(xmi_id) || connector_target_name(xmi_id)
+            member_end = lookup_entity_name(xmi_id) ||
+              connector_target_name(xmi_id)
           else
             xmi_id = link.start
-            member_end = lookup_entity_name(xmi_id) || connector_source_name(xmi_id)
+            member_end = lookup_entity_name(xmi_id) ||
+              connector_source_name(xmi_id)
           end
 
           if link.name == "Association"
@@ -267,27 +306,33 @@ module Lutaml
             member_end_attribute_name, xmi_id]
         end
 
+        # @param link_id [String]
+        # @param connector_type [String]
+        # @return [Array<Hash, String>]
         # @note xpath %(//connector[@xmi:idref="#{link_id}"]/#{connector_type})
         def fetch_assoc_connector(link_id, connector_type)
-          assoc_connector = fetch_connector(link_id).send(:connector_type)
+          assoc_connector = fetch_connector(link_id).send(connector_type.to_sym)
 
           if assoc_connector
-            connector_type = assoc_connector.type
-            if connector_type && connector_type.multiplicity
-              cardinality = connector_type.multiplicity.split('..')
+            assoc_connector_type = assoc_connector.type
+            if assoc_connector_type && assoc_connector_type.multiplicity
+              cardinality = assoc_connector_type.multiplicity.split('..')
               cardinality.unshift('1') if cardinality.length == 1
               min, max = cardinality
             end
-            connector_role = assoc_connector.role
-            if connector_role
-              attribute_name = connector_role.name
-            end
-            cardinality = { "min" => LOWER_VALUE_MAPPINGS[min], "max" => max }
+            assoc_connector_role = assoc_connector.role
+            attribute_name = assoc_connector_role.name if assoc_connector_role
+            cardinality = cardinality_min_max_value(min, max)
           end
 
-          return cardinality, attribute_name
+          [cardinality, attribute_name]
         end
 
+        # The return value of generalization_association seems not
+        # match with what serialize_owned_type return?
+        # @param owner_xmi_id [String]
+        # @param link [Shale::Mapper]
+        # @return [Array<String, String, Nil, String>]
         def generalization_association(owner_xmi_id, link)
           if link.start == owner_xmi_id
             xmi_id = link.end
@@ -304,13 +349,14 @@ module Lutaml
           member_end_cardinality, member_end_attribute_name =
             fetch_owned_attribute_node(xmi_id)
 
-          [member_end, member_end_type, member_end_cardinality, nil, xmi_id]
+          [member_end, member_end_cardinality, member_end_attribute_name]
         end
 
+        # Multiple items if search type is idref.  Should search association?
+        # @param xmi_id [String]
+        # @return [Array<Hash, String>]
         # @note xpath
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
-        #   multiple items if search type idref
-        #   should search association?
         def fetch_owned_attribute_node(xmi_id)
           all_elements = select_all_packaged_elements(xmi_root_model, nil)
           owned_attributes = all_elements.map { |e| e.owned_attribute }.flatten
@@ -321,81 +367,103 @@ module Lutaml
           if assoc
             upper_value = assoc.upper_value
             lower_value = assoc.lower_value
-
-            cardinality = {
-              "min" => cardinality_min_value(lower_value),
-              "max" => cardinality_max_value(upper_value)
-            }
-
+            cardinality = cardinality_min_max_value(lower_value, upper_value)
             assoc_name = assoc.name
           end
 
-          return cardinality, assoc_name
+          [cardinality, assoc_name]
         end
 
+        # @param klass_id [String]
+        # @return [Shale::Mapper]
         # @note xpath %(//element[@xmi:idref="#{klass['xmi:id']}"])
-        def fetch_element(klass)
+        def fetch_element(klass_id)
           xmi_root_model.extension.elements.element.select do |e|
-            e.idref == klass.id
+            e.idref == klass_id
           end.first
         end
 
+        # @param klass [Shale::Mapper]
+        # @return [Array<Hash>]
         # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
         def serialize_class_attributes(klass)
           klass.owned_attribute.select { |attr| attr.is_type?("uml:Property") }
             .map do |attribute|
-              uml_type = attribute.uml_type.first || {}
+              uml_type = attribute.uml_type.first
+              uml_type_idref = uml_type.id_ref if uml_type
 
               if attribute.association.nil?
                 {
                   id: attribute.id,
                   name: attribute.name,
-                  type: lookup_entity_name(uml_type.idref) || uml_type.idref,
-                  xmi_id: uml_type.idref,
+                  type: lookup_entity_name(uml_type_idref) || uml_type_idref,
+                  xmi_id: uml_type_idref,
                   is_derived: attribute.is_derived,
-                  cardinality: {
-                    "min" => cardinality_min_value(attribute.lowerValue.value),
-                    "max" => cardinality_max_value(attribute.upperValue.value)
-                  },
+                  cardinality: cardinality_min_max_value(
+                    attribute.lowerValue.value, attribute.upperValue.value),
                   definition: lookup_attribute_documentation(attribute.id),
                 }
               end
           end.compact
         end
 
+        # @param min [String]
+        # @param max [String]
+        # @return [Hash]
+        def cardinality_min_max_value(min, max)
+          {
+            "min" => cardinality_min_value(min),
+            "max" => cardinality_max_value(max)
+          }
+        end
+
+        # @param value [String]
+        # @return [String]
         def cardinality_min_value(value)
           return unless value
 
           LOWER_VALUE_MAPPINGS[value]
         end
 
+        # @param value [String]
+        # @return [String]
         def cardinality_max_value(value)
           return unless value
 
           value
         end
 
+        # @node [Shale::Mapper]
+        # @attr_name [String]
+        # @return [String]
         # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/properties)
-        def doc_node_attribute_value(node, attr_name)
-          doc_node = fetch_element(node.id)
+        def doc_node_attribute_value(node_id, attr_name)
+          doc_node = fetch_element(node_id)
           return unless doc_node
 
           doc_node.properties.send(attr_name.to_sym)
         end
 
+        # @param xmi_id [String]
+        # @return [String]
         # @note xpath %(//attribute[@xmi:idref="#{xmi_id}"]/documentation)
         def lookup_attribute_documentation(xmi_id)
-          doc_node = fetch_element(node.id)
+          doc_node = fetch_element(xmi_id)
           return unless doc_node
 
           doc_node.documentation
         end
 
+        # @param xmi_id [String]
+        # @return [String]
         def lookup_entity_name(xmi_id)
-          xmi_cache[xmi_id] ||= model_node_name_by_xmi_id(xmi_id)
+          model_node_name_by_xmi_id(xmi_id) if xmi_cache.empty?
           xmi_cache[xmi_id]
         end
 
+        # @param xmi_id [String]
+        # @param source_or_target [String]
+        # @return [String]
         def connector_name_by_source_or_target(xmi_id, source_or_target)
           node = xmi_root_model.extension.connectors.connector.select do |con|
             con.send(source_or_target.to_sym).idref == xmi_id
@@ -405,11 +473,15 @@ module Lutaml
           node.first.name
         end
 
+        # @param xmi_id [String]
+        # @return [String]
         # @note xpath %(//source[@xmi:idref="#{xmi_id}"]/model)
         def connector_source_name(xmi_id)
           connector_name_by_source_or_target(xmi_id, :source)
         end
 
+        # @param xmi_id [String]
+        # @return [String]
         # @note xpath %(//target[@xmi:idref="#{xmi_id}"]/model)
         def connector_target_name(xmi_id)
           connector_name_by_source_or_target(xmi_id, :target)
@@ -427,7 +499,7 @@ module Lutaml
 
         # @param model
         # @param type [String] nil for any
-        # @return [Array]
+        # @return [Array<Shale::Mapper>]
         def select_all_items(model, type, method)
           items = []
           iterate_tree(items, model, type, method.to_sym)
@@ -436,14 +508,14 @@ module Lutaml
 
         # @param model
         # @param type [String] nil for any
-        # @return [Array]
+        # @return [Array<Shale::Mapper>]
         # @note xpath ./packagedElement[@xmi:type="#{type}"]
         def select_all_packaged_elements(model, type)
           select_all_items(model, type, :packaged_element)
         end
 
         # @param result [Array]
-        # @param node [Object]
+        # @param node [Shale::Mapper]
         # @param type [String] nil for any
         # @param children_method [String] method to determine children exist
         def iterate_tree(result, node, type, children_method)
