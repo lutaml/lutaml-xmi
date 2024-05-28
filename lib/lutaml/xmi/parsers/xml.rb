@@ -141,7 +141,7 @@ module Lutaml
             {
               xmi_id: diagram.id,
               name: diagram.properties.name,
-              definition: diagram.properties.name.documentation
+              definition: diagram.properties.documentation
             }
           end
         end
@@ -153,8 +153,8 @@ module Lutaml
           matched_element = xmi_root_model.extension.elements.element
             .select { |e| e.idref == xmi_id }.first
 
-          matched_element.links.map do |link|
-            link.associations.map do |assoc|
+          if matched_element.links && matched_element.links.association
+            matched_element.links.association.map do |assoc|
               link_member_name = assoc.start == xmi_id ? "end" : "start"
               linke_owner_name = link_member_name == "start" ? "end" : "start"
               member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, link, link_member_name)
@@ -178,7 +178,7 @@ module Lutaml
                   definition: definition
                 }
               end
-            end.uniq
+            end
           end
         end
 
@@ -207,7 +207,7 @@ module Lutaml
         def serialize_class_operations(klass)
           klass.owned_operation.map do |operation|
             uml_type = operation.uml_type.first
-            uml_type_idref = uml_type.id_ref if uml_type
+            uml_type_idref = uml_type.idref if uml_type
 
             if operation.association.nil?
               {
@@ -228,17 +228,19 @@ module Lutaml
         def serialize_class_constraints(klass_id)
           connector_node = fetch_connector(klass_id)
 
-          constraints = [:source, :target].map do |st|
-            connector_node.send(st).constraints.constraint
-          end.flatten
+          if connector_node
+            constraints = [:source, :target].map do |st|
+              connector_node.send(st).constraints.constraint
+            end.flatten
 
-          constraints.map do |constraint|
-            {
-              name: HTMLEntities.new.decode(constraint.name),
-              type: constraint.type,
-              weight: constraint.weight,
-              status: constraint.status,
-            }
+            constraints.map do |constraint|
+              {
+                name: HTMLEntities.new.decode(constraint.name),
+                type: constraint.type,
+                weight: constraint.weight,
+                status: constraint.status,
+              }
+            end
           end
         end
 
@@ -389,8 +391,8 @@ module Lutaml
         def serialize_class_attributes(klass)
           klass.owned_attribute.select { |attr| attr.is_type?("uml:Property") }
             .map do |attribute|
-              uml_type = attribute.uml_type.first
-              uml_type_idref = uml_type.id_ref if uml_type
+              uml_type = attribute.uml_type
+              uml_type_idref = uml_type.idref if uml_type
 
               if attribute.association.nil?
                 {
@@ -400,7 +402,7 @@ module Lutaml
                   xmi_id: uml_type_idref,
                   is_derived: attribute.is_derived,
                   cardinality: cardinality_min_max_value(
-                    attribute.lowerValue.value, attribute.upperValue.value),
+                    attribute.lower_value.value, attribute.upper_value.value),
                   definition: lookup_attribute_documentation(attribute.id),
                 }
               end
@@ -441,7 +443,7 @@ module Lutaml
           doc_node = fetch_element(node_id)
           return unless doc_node
 
-          doc_node.properties.send(attr_name.to_sym)
+          doc_node.properties.send(attr_name.snakecase.to_sym)
         end
 
         # @param xmi_id [String]
