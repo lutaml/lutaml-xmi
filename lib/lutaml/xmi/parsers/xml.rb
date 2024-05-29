@@ -220,8 +220,6 @@ module Lutaml
           end.compact
         end
 
-        # In ea-xmi-2.5.1, constraints are moved to source/target
-        # under connectors?
         # @param klass_id [String]
         # @return [Array<Hash>]
         # @note xpath ./constraints/constraint
@@ -229,6 +227,8 @@ module Lutaml
           connector_node = fetch_connector(klass_id)
 
           if connector_node
+            # In ea-xmi-2.5.1, constraints are moved to source/target under
+            # connectors
             constraints = [:source, :target].map do |st|
               connector_node.send(st).constraints.constraint
             end.flatten
@@ -247,7 +247,7 @@ module Lutaml
         # @param owner_xmi_id [String]
         # @param link [Shale::Mapper]
         # @param link_member_name [String]
-        # @return [Array<String, Hash, String>]
+        # @return [String]
         def serialize_owned_type(owner_xmi_id, link, linke_owner_name)
           case link.name
           when "NoteLink"
@@ -274,7 +274,7 @@ module Lutaml
         # @param owner_xmi_id [String]
         # @param link [Shale::Mapper]
         # @param link_member_name [String]
-        # @return [Array<String, String, Hash, String, String>]
+        # @return [Array<String>, String, Hash, String, <String>]
         def serialize_member_type(owner_xmi_id, link, link_member_name)
           case link.name
           when "NoteLink"
@@ -310,7 +310,7 @@ module Lutaml
 
         # @param link_id [String]
         # @param connector_type [String]
-        # @return [Array<Hash, String>]
+        # @return [Array<Hash>, <String>]
         # @note xpath %(//connector[@xmi:idref="#{link_id}"]/#{connector_type})
         def fetch_assoc_connector(link_id, connector_type)
           assoc_connector = fetch_connector(link_id).send(connector_type.to_sym)
@@ -330,11 +330,10 @@ module Lutaml
           [cardinality, attribute_name]
         end
 
-        # The return value of generalization_association seems not
-        # match with what serialize_owned_type return?
         # @param owner_xmi_id [String]
         # @param link [Shale::Mapper]
-        # @return [Array<String, String, Nil, String>]
+        # @return [Array<String>, String, Hash, String, <String>]
+        # @note match return value of serialize_member_type
         def generalization_association(owner_xmi_id, link)
           if link.start == owner_xmi_id
             xmi_id = link.end
@@ -356,7 +355,7 @@ module Lutaml
 
         # Multiple items if search type is idref.  Should search association?
         # @param xmi_id [String]
-        # @return [Array<Hash, String>]
+        # @return [Array<Hash>, <String>]
         # @note xpath
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
         def fetch_owned_attribute_node(xmi_id)
@@ -499,24 +498,24 @@ module Lutaml
           xmi_cache[xmi_id]
         end
 
-        # @param model
+        # @param items [Array<Shale::Mapper>]
+        # @param model [Shale::Mapper]
         # @param type [String] nil for any
-        # @return [Array<Shale::Mapper>]
         def select_all_items(model, type, method)
           items = []
           iterate_tree(items, model, type, method.to_sym)
           items
         end
 
-        # @param model
+        # @param items [Array<Shale::Mapper>]
+        # @param model [Shale::Mapper]
         # @param type [String] nil for any
-        # @return [Array<Shale::Mapper>]
         # @note xpath ./packagedElement[@xmi:type="#{type}"]
         def select_all_packaged_elements(model, type)
           select_all_items(model, type, :packaged_element)
         end
 
-        # @param result [Array]
+        # @param result [Array<Shale::Mapper>]
         # @param node [Shale::Mapper]
         # @param type [String] nil for any
         # @param children_method [String] method to determine children exist
