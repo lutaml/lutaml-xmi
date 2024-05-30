@@ -375,7 +375,9 @@ module Lutaml
 
           if oa
             cardinality = cardinality_min_max_value(
-              oa.lower_value.value, oa.upper_value.value)
+              oa.lower_value.nil? ? nil : oa.lower_value.value,
+              oa.upper_value.nil? ? nil : oa.upper_value.value
+            )
             oa_name = oa.name
           end
 
@@ -396,20 +398,21 @@ module Lutaml
         # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
         def serialize_class_attributes(klass)
           klass.owned_attribute.select { |attr| attr.is_type?("uml:Property") }
-            .map do |attribute|
-              uml_type = attribute.uml_type
+            .map do |oa|
+              uml_type = oa.uml_type
               uml_type_idref = uml_type.idref if uml_type
 
-              if attribute.association.nil?
+              if oa.association.nil?
                 {
-                  id: attribute.id,
-                  name: attribute.name,
+                  id: oa.id,
+                  name: oa.name,
                   type: lookup_entity_name(uml_type_idref) || uml_type_idref,
                   xmi_id: uml_type_idref,
-                  is_derived: attribute.is_derived,
+                  is_derived: oa.is_derived,
                   cardinality: cardinality_min_max_value(
-                    attribute.lower_value.value, attribute.upper_value.value),
-                  definition: lookup_attribute_documentation(attribute.id),
+                    oa.lower_value.nil? ? nil : oa.lower_value.value,
+                    oa.upper_value.nil? ? nil : oa.upper_value.value),
+                  definition: lookup_attribute_documentation(oa.id),
                 }
               end
           end.compact
@@ -420,25 +423,18 @@ module Lutaml
         # @return [Hash]
         def cardinality_min_max_value(min, max)
           {
-            "min" => cardinality_min_value(min),
-            "max" => cardinality_max_value(max)
+            "min" => cardinality_value(min, true),
+            "max" => cardinality_value(max, false)
           }
         end
 
         # @param value [String]
+        # @param is_min [Boolean]
         # @return [String]
-        def cardinality_min_value(value)
+        def cardinality_value(value, is_min = false)
           return unless value
 
-          LOWER_VALUE_MAPPINGS[value]
-        end
-
-        # @param value [String]
-        # @return [String]
-        def cardinality_max_value(value)
-          return unless value
-
-          value
+          is_min ? LOWER_VALUE_MAPPINGS[value] : value
         end
 
         # @node [Shale::Mapper]
