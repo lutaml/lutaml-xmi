@@ -114,7 +114,10 @@ module Lutaml
         # @return [Array<Hash>]
         # @note xpath ./packagedElement[@xmi:type="uml:DataType"]
         def serialize_model_data_types(model)
-          select_all_packaged_elements(model, "uml:DataType").map do |klass|
+          all_data_type_elements = []
+          select_all_packaged_elements(all_data_type_elements, model,
+            "uml:DataType")
+          all_data_type_elements.map do |klass|
             {
               xmi_id: klass.id,
               name: klass.name,
@@ -365,9 +368,10 @@ module Lutaml
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
         def fetch_owned_attribute_node(xmi_id)
           all_elements = []
-          xmi_root_model.model.packaged_element.each do |e|
+          all_packaged_elements.each do |e|
             select_all_packaged_elements(all_elements, e, nil)
           end
+
           owned_attributes = all_elements.map { |e| e.owned_attribute }.flatten
           oa = owned_attributes.select do |a|
             !!a.association && a.uml_type && a.uml_type.idref == xmi_id
@@ -501,6 +505,16 @@ module Lutaml
           map_id_name(id_name_mapping, xmi_root_model)
           xmi_cache = id_name_mapping
           xmi_cache[xmi_id]
+        end
+
+        # @return [Array<Xmi::Uml::PackagedElement>]
+        def all_packaged_elements
+          [
+            xmi_root_model.model.packaged_element +
+            xmi_root_model.extension.primitive_types.packaged_element +
+            xmi_root_model.extension.profiles.profile
+              .map {|p| p.packaged_element }
+          ].flatten
         end
 
         # @param items [Array<Shale::Mapper>]
