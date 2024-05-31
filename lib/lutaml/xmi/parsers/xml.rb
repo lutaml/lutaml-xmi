@@ -154,37 +154,40 @@ module Lutaml
         # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/links/*)
         def serialize_model_associations(xmi_id)
           matched_element = xmi_root_model.extension.elements.element
-            .select { |e| e.idref == xmi_id }.first
+            .find { |e| e.idref == xmi_id }
 
-          if matched_element.links && !matched_element.links.association.empty?
-            matched_element.links.association.map do |assoc|
-              link_member_name = assoc.start == xmi_id ? "end" : "start"
-              linke_owner_name = link_member_name == "start" ? "end" : "start"
+          return if !matched_element.links ||
+            matched_element.links.association.empty?
 
-              member_end, member_end_type, member_end_cardinality, member_end_attribute_name, member_end_xmi_id = serialize_member_type(xmi_id, assoc, link_member_name)
+          matched_element.links.association.map do |assoc|
+            link_member_name = assoc.start == xmi_id ? "end" : "start"
+            linke_owner_name = link_member_name == "start" ? "end" : "start"
 
-              owner_end = serialize_owned_type(xmi_id, assoc, linke_owner_name)
+            member_end, member_end_type, member_end_cardinality,
+              member_end_attribute_name, member_end_xmi_id =
+              serialize_member_type(xmi_id, assoc, link_member_name)
 
-              if member_end && ((member_end_type != 'aggregation') ||
-                (member_end_type == 'aggregation' && member_end_attribute_name))
+            owner_end = serialize_owned_type(xmi_id, assoc, linke_owner_name)
 
-                doc_node_name = (link_member_name == "start" ?
-                  "source" : "target")
-                definition = fetch_definition_node_value(assoc.id,
-                  doc_node_name)
+            if member_end && ((member_end_type != 'aggregation') ||
+              (member_end_type == 'aggregation' && member_end_attribute_name))
 
-                {
-                  xmi_id: assoc.id,
-                  member_end: member_end,
-                  member_end_type: member_end_type,
-                  member_end_cardinality: member_end_cardinality,
-                  member_end_attribute_name: member_end_attribute_name,
-                  member_end_xmi_id: member_end_xmi_id,
-                  owner_end: owner_end,
-                  owner_end_xmi_id: xmi_id,
-                  definition: definition
-                }
-              end
+              doc_node_name = (link_member_name == "start" ?
+                "source" : "target")
+              definition = fetch_definition_node_value(assoc.id,
+                doc_node_name)
+
+              {
+                xmi_id: assoc.id,
+                member_end: member_end,
+                member_end_type: member_end_type,
+                member_end_cardinality: member_end_cardinality,
+                member_end_attribute_name: member_end_attribute_name,
+                member_end_xmi_id: member_end_xmi_id,
+                owner_end: owner_end,
+                owner_end_xmi_id: xmi_id,
+                definition: definition
+              }
             end
           end
         end
@@ -282,8 +285,8 @@ module Lutaml
         # @param owner_xmi_id [String]
         # @param link [Shale::Mapper]
         # @param link_member_name [String]
-        # @return [Array<String>, String, Hash, String, <String>]
-        def serialize_member_type(owner_xmi_id, link, link_member_name)
+        # @return [Array<String, String>]
+        def serialize_member_end(owner_xmi_id, link, link_member_name)
           case link.name
           when "NoteLink"
             return
@@ -302,6 +305,17 @@ module Lutaml
           member_end = lookup_entity_name(xmi_id) ||
             connector_name_by_source_or_target(xmi_id, source_or_target)
 
+          [member_end, xmi_id]
+        end
+
+        # @param owner_xmi_id [String]
+        # @param link [Shale::Mapper]
+        # @param link_member_name [String]
+        # @return [Array<String, String, Hash, String, String>]
+        def serialize_member_type(owner_xmi_id, link, link_member_name)
+          member_end, xmi_id = serialize_member_end(
+            owner_xmi_id, link, link_member_name)
+
           if link.name == "Association"
             connector_type = link_member_name == "start" ? "source" : "target"
             member_end_cardinality, member_end_attribute_name =
@@ -317,7 +331,7 @@ module Lutaml
 
         # @param link_id [String]
         # @param connector_type [String]
-        # @return [Array<Hash>, <String>]
+        # @return [Array<Hash, String>]
         # @note xpath %(//connector[@xmi:idref="#{link_id}"]/#{connector_type})
         def fetch_assoc_connector(link_id, connector_type)
           assoc_connector = fetch_connector(link_id).send(connector_type.to_sym)
@@ -330,7 +344,9 @@ module Lutaml
               min, max = cardinality
             end
             assoc_connector_role = assoc_connector.role
-            attribute_name = assoc_connector_role.name if assoc_connector_role
+            # Does role has name attribute? Or get name from model?
+            # attribute_name = assoc_connector_role.name if assoc_connector_role
+            attribute_name = assoc_connector.model.name if assoc_connector_role
             cardinality = cardinality_min_max_value(min, max)
           end
 
@@ -339,7 +355,7 @@ module Lutaml
 
         # @param owner_xmi_id [String]
         # @param link [Shale::Mapper]
-        # @return [Array<String>, String, Hash, String, <String>]
+        # @return [Array<String, String, Hash, String, String>]
         # @note match return value of serialize_member_type
         def generalization_association(owner_xmi_id, link)
           member_end_type = "generalization"
@@ -363,7 +379,7 @@ module Lutaml
 
         # Multiple items if search type is idref.  Should search association?
         # @param xmi_id [String]
-        # @return [Array<Hash>, <String>]
+        # @return [Array<Hash, String>]
         # @note xpath
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
         def fetch_owned_attribute_node(xmi_id)
@@ -379,8 +395,8 @@ module Lutaml
 
           if oa
             cardinality = cardinality_min_max_value(
-              oa.lower_value.nil? ? nil : oa.lower_value.value,
-              oa.upper_value.nil? ? nil : oa.upper_value.value
+              oa.lower_value&.value,
+              oa.upper_value&.value
             )
             oa_name = oa.name
           end
@@ -414,8 +430,8 @@ module Lutaml
                   xmi_id: uml_type_idref,
                   is_derived: oa.is_derived,
                   cardinality: cardinality_min_max_value(
-                    oa.lower_value.nil? ? nil : oa.lower_value.value,
-                    oa.upper_value.nil? ? nil : oa.upper_value.value),
+                    oa.lower_value&.value,
+                    oa.upper_value&.value),
                   definition: lookup_attribute_documentation(oa.id),
                 }
               end
