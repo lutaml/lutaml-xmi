@@ -74,18 +74,18 @@ module Lutaml
           package.packaged_element.select { |e|
             e.is_type?("uml:Class") || e.is_type?("uml:AssociationClass")
           }.map do |klass|
-              {
-                xmi_id: klass.id,
-                name: klass.name,
-                package: model,
-                attributes: serialize_class_attributes(klass),
-                associations: serialize_model_associations(klass.id),
-                operations: serialize_class_operations(klass),
-                constraints: serialize_class_constraints(klass.id),
-                is_abstract: doc_node_attribute_value(klass.id, "isAbstract"),
-                definition: doc_node_attribute_value(klass.id, "documentation"),
-                stereotype: doc_node_attribute_value(klass.id, "stereotype")
-              }
+            {
+              xmi_id: klass.id,
+              name: klass.name,
+              package: model,
+              attributes: serialize_class_attributes(klass),
+              associations: serialize_model_associations(klass.id),
+              operations: serialize_class_operations(klass),
+              constraints: serialize_class_constraints(klass.id),
+              is_abstract: doc_node_attribute_value(klass.id, "isAbstract"),
+              definition: doc_node_attribute_value(klass.id, "documentation"),
+              stereotype: doc_node_attribute_value(klass.id, "stereotype")
+            }
           end
         end
 
