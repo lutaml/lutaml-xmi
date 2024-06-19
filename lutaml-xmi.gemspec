@@ -1,40 +1,24 @@
-# frozen_string_literal: true
+# -*- encoding: utf-8 -*-
 
-require_relative "lib/lutaml/xmi/version"
+Gem::Specification.new do |s|
+  s.name        = "lutaml-xmi"
+  s.version     = "1.0.0"
+  s.authors       = ["Ribose Inc."]
+  s.email         = ["open.source@ribose.com"]
 
-Gem::Specification.new do |spec|
-  spec.name          = "lutaml-xmi"
-  spec.version       = Lutaml::XMI::VERSION
-  spec.authors       = ["Ribose Inc."]
-  spec.email         = ["open.source@ribose.com'"]
+  s.homepage    = "http://github.com/lutaml/lutaml"
+  s.summary     = "Lutaml stub gem for lutaml-xmi"
+  s.description = "Lutaml stub gem for lutaml-xmi"
+  s.license       = "BSD-2-Clause"
 
-  spec.summary       = "XML Metadata Interchange (XMI) Specification parser in Ruby, tools for accessing EXPRESS data models."
-  spec.description   = "XML Metadata Interchange (XMI) Specification parser in Ruby, tools for accessing EXPRESS data models."
-  spec.homepage      = "https://github.com/lutaml/lutaml-xmi"
-  spec.license       = "MIT"
+  s.files         = `git ls-files`.split("\n")
+  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
+  s.executables   = `git ls-files -- exe/*`.split("\n").map do |f|
+    File.basename(f)
+  end
+  s.bindir        = "exe"
+  s.require_paths = ["lib"]
+  s.required_ruby_version = Gem::Requirement.new(">= 2.7.0")
 
-  spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "https://github.com/lutaml/lutaml-xmi/releases"
-
-  spec.files         = `git ls-files`.split("\n")
-  spec.test_files    = `git ls-files -- {spec}/*`.split("\n")
-
-  spec.bindir        = "exe"
-  spec.require_paths = ["lib"]
-
-  spec.required_ruby_version = '>= 2.7.0'
-
-  spec.add_runtime_dependency "hashie", "~> 4.1.0"
-  spec.add_runtime_dependency "thor", "~> 1.0"
-  spec.add_runtime_dependency "lutaml-uml"
-  spec.add_runtime_dependency "nokogiri", "~> 1.10"
-  spec.add_runtime_dependency "htmlentities"
-  spec.add_runtime_dependency "xmi"
-
-  spec.add_development_dependency "bundler", "~> 2.0"
-  spec.add_development_dependency "pry", "~> 0.12.2"
-  spec.add_development_dependency "rake", "~> 10.0"
-  spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "rubocop", "~> 0.54.0"
+  s.add_dependency "lutaml", "> 0.7.7"
 end
