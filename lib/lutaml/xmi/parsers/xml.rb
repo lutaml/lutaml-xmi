@@ -21,7 +21,7 @@ module Lutaml
         # @return [Lutaml::Uml::Document]
         def self.parse(xml, _options = {})
           xml_content = File.read(xml)
-          xmi_model = Xmi::Sparx::SparxRoot.from_xml(xml_content)
+          xmi_model = Xmi::Sparx::SparxRoot2013.from_xml(xml_content)
           new.parse(xmi_model)
         end
 
@@ -72,7 +72,7 @@ module Lutaml
         #                               @xmi:type="uml:AssociationClass"]
         def serialize_model_classes(package, model)
           package.packaged_element.select { |e|
-            e.is_type?("uml:Class") || e.is_type?("uml:AssociationClass")
+            e.type?("uml:Class") || e.type?("uml:AssociationClass")
           }.map do |klass|
             {
               xmi_id: klass.id,
@@ -94,7 +94,7 @@ module Lutaml
         # @note xpath ./packagedElement[@xmi:type="uml:Enumeration"]
         def serialize_model_enums(package)
           package.packaged_element
-            .select { |e| e.is_type?("uml:Enumeration") }.map do |enum|
+            .select { |e| e.type?("uml:Enumeration") }.map do |enum|
               # xpath .//ownedLiteral[@xmi:type="uml:EnumerationLiteral"]
               owned_literals = enum.owned_literal.map do |owned_literal|
                 owned_literal.to_hash.transform_keys(&:to_sym)
@@ -136,7 +136,7 @@ module Lutaml
         # @return [Array<Hash>]
         # @note xpath %(//diagrams/diagram/model[@package="#{node['xmi:id']}"])
         def serialize_model_diagrams(node_id)
-          diagrams = xmi_root_model.extension.diagrams.diagram.select do |d|
+          diagrams = @xmi_root_model.extension.diagrams.diagram.select do |d|
             d.model.package == node_id
           end
 
@@ -153,7 +153,7 @@ module Lutaml
         # @return [Array<Hash>]
         # @note xpath %(//element[@xmi:idref="#{xmi_id}"]/links/*)
         def serialize_model_associations(xmi_id)
-          matched_element = xmi_root_model.extension.elements.element
+          matched_element = @xmi_root_model.extension.elements.element
             .find { |e| e.idref == xmi_id }
 
           return if !matched_element.links ||
@@ -196,7 +196,7 @@ module Lutaml
         # @return [Shale::Mapper]
         # @note xpath %(//connector[@xmi:idref="#{link_id}"])
         def fetch_connector(link_id)
-          xmi_root_model.extension.connectors.connector.select do |con|
+          @xmi_root_model.extension.connectors.connector.select do |con|
             con.idref == link_id
           end.first
         end
@@ -383,10 +383,7 @@ module Lutaml
         # @note xpath
         #   %(//ownedAttribute[@association]/type[@xmi:idref="#{xmi_id}"])
         def fetch_owned_attribute_node(xmi_id)
-          all_elements = []
-          all_packaged_elements.each do |e|
-            select_all_packaged_elements(all_elements, e, nil)
-          end
+          all_elements = all_packaged_elements
 
           owned_attributes = all_elements.map { |e| e.owned_attribute }.flatten
           oa = owned_attributes.select do |a|
@@ -408,7 +405,7 @@ module Lutaml
         # @return [Shale::Mapper]
         # @note xpath %(//element[@xmi:idref="#{klass['xmi:id']}"])
         def fetch_element(klass_id)
-          xmi_root_model.extension.elements.element.select do |e|
+          @xmi_root_model.extension.elements.element.select do |e|
             e.idref == klass_id
           end.first
         end
@@ -417,7 +414,7 @@ module Lutaml
         # @return [Array<Hash>]
         # @note xpath .//ownedAttribute[@xmi:type="uml:Property"]
         def serialize_class_attributes(klass)
-          klass.owned_attribute.select { |attr| attr.is_type?("uml:Property") }
+          klass.owned_attribute.select { |attr| attr.type?("uml:Property") }
             .map do |oa|
               uml_type = oa.uml_type
               uml_type_idref = uml_type.idref if uml_type
@@ -481,15 +478,15 @@ module Lutaml
         # @param xmi_id [String]
         # @return [String]
         def lookup_entity_name(xmi_id)
-          model_node_name_by_xmi_id(xmi_id) if xmi_cache.empty?
-          xmi_cache[xmi_id]
+          model_node_name_by_xmi_id(xmi_id) if @xmi_cache.empty?
+          @xmi_cache[xmi_id]
         end
 
         # @param xmi_id [String]
         # @param source_or_target [String]
         # @return [String]
         def connector_name_by_source_or_target(xmi_id, source_or_target)
-          node = xmi_root_model.extension.connectors.connector.select do |con|
+          node = @xmi_root_model.extension.connectors.connector.select do |con|
             con.send(source_or_target.to_sym).idref == xmi_id
           end
           return if node.empty? ||
@@ -518,19 +515,24 @@ module Lutaml
         # @note xpath %(//*[@xmi:id="#{xmi_id}"])
         def model_node_name_by_xmi_id(xmi_id)
           id_name_mapping = Hash.new
-          map_id_name(id_name_mapping, xmi_root_model)
-          xmi_cache = id_name_mapping
-          xmi_cache[xmi_id]
+          map_id_name(id_name_mapping, @xmi_root_model)
+          @xmi_cache = id_name_mapping
+          @xmi_cache[xmi_id]
         end
 
         # @return [Array<Xmi::Uml::PackagedElement>]
         def all_packaged_elements
+          all_elements = []
           [
-            xmi_root_model.model.packaged_element +
-            xmi_root_model.extension.primitive_types.packaged_element +
-            xmi_root_model.extension.profiles.profile
+            @xmi_root_model.model.packaged_element +
+            @xmi_root_model.extension.primitive_types.packaged_element +
+            @xmi_root_model.extension.profiles.profile
               .map {|p| p.packaged_element }
-          ].flatten
+          ].flatten.each do |e|
+            select_all_packaged_elements(all_elements, e, nil)
+          end
+
+          all_elements
         end
 
         # @param items [Array<Shale::Mapper>]
@@ -540,12 +542,16 @@ module Lutaml
           iterate_tree(items, model, type, method.to_sym)
         end
 
-        # @param items [Array<Shale::Mapper>]
+        # @param all_elements [Array<Shale::Mapper>]
         # @param model [Shale::Mapper]
         # @param type [String] nil for any
         # @note xpath ./packagedElement[@xmi:type="#{type}"]
         def select_all_packaged_elements(all_elements, model, type)
           select_all_items(all_elements, model, type, :packaged_element)
+          all_elements.delete_if do |e|
+            !e.is_a?(Xmi::Uml::PackagedElement) &&
+              !e.is_a?(Xmi::Uml::PackagedElement2013)
+          end
         end
 
         # @param result [Array<Shale::Mapper>]
